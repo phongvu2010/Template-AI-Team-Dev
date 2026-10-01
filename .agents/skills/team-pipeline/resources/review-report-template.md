@@ -11,14 +11,14 @@
 | Hạng mục Kiểm định | Trạng thái | Nhận xét |
 | :--- | :---: | :--- |
 | **1. Tuân thủ Contract (`plan.md`)** | Pass / Fail | |
-| **2. Database & Hiệu năng (`db/`)** | Pass / Fail | |
-| **3. Backend & Bảo mật (`backend/`)** | Pass / Fail | |
-| **4. Frontend & Accessibility (`frontend/`)** | Pass / Fail | |
+| **2. Database & Hiệu năng (`src/db/`)** | Pass / Fail | |
+| **3. Backend & Bảo mật (`src/backend/`)** | Pass / Fail | |
+| **4. Frontend & Accessibility (`src/frontend/`)** | Pass / Fail | |
 | **5. Độ phủ Kiểm thử (`test-report.md`)** | Pass / Fail | |
 
 ---
 
-## 2. Danh sách Phát hiện Chi tiết (Findings)
+## 2. Danh sách Phát hiện Chi tiết (Findings từ `git diff`)
 
 > Phân loại mức độ:
 > - `[CRITICAL]`: Lỗi bảo mật, mất dữ liệu, crash hoặc sai lệch hợp đồng API (Bắt buộc sửa).

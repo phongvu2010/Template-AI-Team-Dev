@@ -1,16 +1,15 @@
 ---
 name: frontend-nextjs
 description: >-
-  React 19, Next.js (App Router), TypeScript (Strict), and Tailwind CSS patterns for the Frontend Dev Team (frontend-dev). Activate when building UI pages, components, typed API clients, forms, or state management in frontend/.
+  React 19, Next.js (App Router), TypeScript (Strict), and Tailwind CSS patterns for the Frontend Dev Team (frontend-dev). Activate when building UI pages, components, typed API clients, forms, or state management in src/frontend/.
 ---
 
 # Frontend Team Runbook: Next.js (App Router) + TypeScript + Tailwind CSS
 
-## 1. Cấu trúc Thư mục Chuẩn (`frontend/`)
+## 1. Cấu trúc Thư mục Chuẩn (`src/frontend/`)
 
 ```text
-frontend/
-├── AGENTS.md                 # Quy chuẩn bắt buộc cho tầng Frontend
+src/frontend/
 ├── src/
 │   ├── app/                  # Next.js App Router (layout.tsx, page.tsx, loading.tsx, error.tsx)
 │   ├── components/           # UI Components tái sử dụng & Feature Components
@@ -18,10 +17,11 @@ frontend/
 │   │   └── api/              # Typed Fetch Client kết nối tới FastAPI Backend
 │   ├── hooks/                # Custom React Hooks
 │   └── types/                # TypeScript Interfaces khớp 100% với Backend Schemas
-└── package.json
+├── package.json
+└── tsconfig.json
 ```
 
-## 2. Mẫu Typed API Client (`frontend/src/lib/api/client.ts`)
+## 2. Mẫu Typed API Client (`src/frontend/src/lib/api/client.ts`)
 
 ```typescript
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";

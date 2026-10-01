@@ -1,16 +1,15 @@
 ---
 name: backend-fastapi
 description: >-
-  Python FastAPI, Pydantic v2, and layered service architecture patterns for the Backend Dev Team (backend-dev). Activate when building REST API endpoints, Pydantic v2 validation schemas, dependency injection, or async business logic in backend/.
+  Python FastAPI, Pydantic v2, and layered service architecture patterns for the Backend Dev Team (backend-dev). Activate when building REST API endpoints, Pydantic v2 validation schemas, dependency injection, or async business logic in src/backend/.
 ---
 
 # Backend Team Runbook: FastAPI + Pydantic v2 + Async Services
 
-## 1. Cấu trúc Thư mục Chuẩn (`backend/`)
+## 1. Cấu trúc Thư mục Chuẩn (`src/backend/`)
 
 ```text
-backend/
-├── AGENTS.md                 # Quy chuẩn bắt buộc cho tầng Backend
+src/backend/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py               # Khởi tạo FastAPI app, CORS, Lifespan, Exception Handlers
@@ -22,10 +21,11 @@ backend/
 │           ├── router.py     # Gộp các APIRouter
 │           └── endpoints/    # Từng nhóm route theo resource
 └── tests/                    # Bộ kiểm thử pytest + httpx.AsyncClient
-    └── conftest.py
+    ├── conftest.py           # Test fixtures + SQLite async in-memory fallback
+    └── test_api_*.py
 ```
 
-## 2. Mẫu Pydantic v2 Schema Chuẩn (`backend/app/schemas/`)
+## 2. Mẫu Pydantic v2 Schema Chuẩn (`src/backend/app/schemas/`)
 
 ```python
 from datetime import datetime
@@ -52,7 +52,12 @@ class ItemResponse(BaseModel):
     updated_at: datetime
 ```
 
-## 3. Quy tắc Thiết kế Endpoint & Dependency Injection
+## 3. Quy tắc Kết nối DB (`src/db/`) & Dependency Injection
+- Dự án đã cấu hình `pythonpath = ["src"]` trong `pyproject.toml`, do đó import trực tiếp từ `db`:
+  ```python
+  from db.models.item import Item
+  from db.session import get_db_session
+  ```
 - Dùng `Annotated[AsyncSession, Depends(get_db_session)]` cho DI gọn gàng, rõ kiểu.
 - Luôn khai báo `response_model=...` và `status_code=status.HTTP_201_CREATED` (cho `POST`) hoặc `status.HTTP_204_NO_CONTENT` (cho `DELETE`).
 - Mọi lỗi nghiệp vụ phải trả về `HTTPException(status_code=..., detail="...")` nhất quán với API Contract trong `plan.md`.

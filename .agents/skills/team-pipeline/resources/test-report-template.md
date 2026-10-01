@@ -8,11 +8,11 @@
 
 ## 1. Tóm tắt Kết quả Kiểm thử (Test Execution Summary)
 
-| Tầng (Layer) | Công cụ (Runner) | Tổng số Test | Passed | Failed | Ghi chú |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| **Database (`db/`)** | `pytest` | 0 | 0 | 0 | |
-| **Backend (`backend/`)** | `pytest + httpx` | 0 | 0 | 0 | |
-| **Frontend (`frontend/`)** | `tsc / vitest` | 0 | 0 | 0 | |
+| Tầng (Layer) | Thư mục kiểm thử | Công cụ (Runner) | Tổng số Test | Passed | Failed | Ghi chú |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
+| **Database (`src/db/`)** | `src/backend/tests/` hoặc `src/db/tests/` | `PYTHONPATH=src pytest` | 0 | 0 | 0 | SQLite memory fallback |
+| **Backend (`src/backend/`)** | `src/backend/tests/` | `PYTHONPATH=src pytest` | 0 | 0 | 0 | `httpx.AsyncClient` |
+| **Frontend (`src/frontend/`)** | `src/frontend/` | `tsc --noEmit / vitest` | 0 | 0 | 0 | Type safety & components |
 
 ---
 
@@ -34,7 +34,7 @@
 > Nếu tất cả đều `PASSED`, ghi: *"Không phát hiện lỗi."*
 
 ### [BUG-01] `<Tiêu đề lỗi>`
-- **Tầng phụ trách**: `db-dev` | `backend-dev` | `frontend-dev`
+- **Tầng phụ trách**: `db-dev` (`src/db/`) | `backend-dev` (`src/backend/`) | `frontend-dev` (`src/frontend/`)
 - **File & Dòng**: `file:///...#L...`
 - **Nguyên nhân gốc (Root Cause)**: ...
 - **Hướng dẫn khắc phục**: ...

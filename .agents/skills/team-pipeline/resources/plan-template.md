@@ -13,16 +13,16 @@
 
 ---
 
-## 2. Data Contract — Thiết kế Database (`db-dev`)
+## 2. Data Contract — Thiết kế Database (`db-dev` — Đích: `src/db/`)
 
-### 2.1. Bảng & SQLAlchemy Models (`db/models/<module>.py`)
+### 2.1. Bảng & SQLAlchemy Models (`src/db/models/<module>.py`)
 | Tên Bảng (`__tablename__`) | Class Model | Cột (`Column`) | Kiểu (`SQLAlchemy / PG`) | Ràng buộc & Index (`Constraints / Index`) |
 | :--- | :--- | :--- | :--- | :--- |
 | `items` | `Item` | `id` | `UUID` / `Integer` | `PK, index=True` |
 | `items` | `Item` | `title` | `String(255)` | `nullable=False, index=True` |
 | `items` | `Item` | `created_at` | `DateTime(timezone=True)` | `server_default=func.now()` |
 
-### 2.2. Relationships & Truy vấn (`db/repositories/<module>.py`)
+### 2.2. Relationships & Truy vấn (`src/db/repositories/<module>.py`)
 - Quan hệ (`relationship`) và chiến lược eager loading (`selectinload` / `joinedload`).
 - Các hàm repository/query cần cung cấp cho `backend-dev` (tên hàm, tham số, kiểu trả về).
 
@@ -56,13 +56,13 @@
 
 ---
 
-## 4. UI & State Architecture — Thiết kế Giao diện (`frontend-dev`)
+## 4. UI & State Architecture — Thiết kế Giao diện (`frontend-dev` — Đích: `src/frontend/`)
 
-- **Routes (`frontend/src/app/...`)**:
+- **Routes (`src/frontend/src/app/...`)**:
   - `/...`: Mô tả trang (Server Component / Client Component).
-- **Components (`frontend/src/components/...`)**:
+- **Components (`src/frontend/src/components/...`)**:
   - `<ComponentName>`: Props, state và hành vi tương tác.
-- **TypeScript Interfaces (`frontend/src/types/<module>.ts`)**:
+- **TypeScript Interfaces (`src/frontend/src/types/<module>.ts`)**:
   - Định nghĩa rõ các interface khớp với Mục 3.
 - **Xử lý 4 Trạng thái UI**:
   - `Loading`: ...
@@ -72,24 +72,24 @@
 
 ---
 
-## 5. Phân rã Công việc (Atomic Tasks)
+## 5. Phân rã Công việc theo 2-Wave (Atomic Tasks)
 
-### Dành cho `db-dev` (Phạm vi: `db/`)
-- [ ] Task DB-1: ...
-- [ ] Task DB-2: ...
+### Wave 1: Dành cho `db-dev` (Phạm vi: `src/db/`)
+- [ ] Task DB-1: Khởi tạo model trong `src/db/models/`.
+- [ ] Task DB-2: Tạo migration script trong `src/db/migrations/`.
 
-### Dành cho `backend-dev` (Phạm vi: `backend/`)
-- [ ] Task BE-1: ...
-- [ ] Task BE-2: ...
+### Wave 1: Dành cho `frontend-dev` (Phạm vi: `src/frontend/`)
+- [ ] Task FE-1: Khai báo types và API client trong `src/frontend/src/`.
+- [ ] Task FE-2: Xây dựng UI components & xử lý 4 trạng thái giao diện.
 
-### Dành cho `frontend-dev` (Phạm vi: `frontend/`)
-- [ ] Task FE-1: ...
-- [ ] Task FE-2: ...
+### Wave 2: Dành cho `backend-dev` (Phạm vi: `src/backend/`, kết nối `src/db/`)
+- [ ] Task BE-1: Khai báo Pydantic schemas trong `src/backend/app/schemas/`.
+- [ ] Task BE-2: Cài đặt services và endpoints trong `src/backend/app/` kết nối `src/db/`.
 
 ---
 
 ## 6. Kịch bản Kiểm thử & Nghiệm thu (`qa-tester` & `code-reviewer`)
-- [ ] **TC-01 (DB)**: Kiểm tra ràng buộc dữ liệu và CRUD cơ bản.
-- [ ] **TC-02 (API Happy Path)**: Gọi API thành công trả về đúng schema.
+- [ ] **TC-01 (DB)**: Kiểm tra ràng buộc dữ liệu và CRUD cơ bản trong `src/db/`.
+- [ ] **TC-02 (API Happy Path)**: Gọi API thành công trả về đúng schema trong `src/backend/tests/`.
 - [ ] **TC-03 (API Edge/Error Case)**: Kiểm tra mã lỗi `404`, `422`, `409`.
 - [ ] **TC-04 (Frontend UI)**: Kiểm tra render đủ trạng thái Loading/Error/Empty/Success và TypeScript strict check.

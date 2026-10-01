@@ -1,16 +1,15 @@
 ---
 name: db-sqlalchemy-alembic
 description: >-
-  PostgreSQL, SQLAlchemy 2.0 (Async), and Alembic patterns and conventions for the Database Dev Team (db-dev). Activate when designing database models, writing async repositories, configuring indexes/constraints, or creating Alembic migrations in db/.
+  PostgreSQL, SQLAlchemy 2.0 (Async), and Alembic patterns and conventions for the Database Dev Team (db-dev). Activate when designing database models, writing async repositories, configuring indexes/constraints, or creating Alembic migrations in src/db/.
 ---
 
 # Database Team Runbook: PostgreSQL + SQLAlchemy 2.0 + Alembic
 
-## 1. Cấu trúc Thư mục Chuẩn (`db/`)
+## 1. Cấu trúc Thư mục Chuẩn (`src/db/`)
 
 ```text
-db/
-├── AGENTS.md                 # Quy chuẩn bắt buộc cho tầng Database
+src/db/
 ├── __init__.py
 ├── base.py                   # DeclarativeBase + Naming Convention + TimestampMixin
 ├── session.py                # AsyncEngine, async_sessionmaker, get_db_session
@@ -21,7 +20,7 @@ db/
 └── migrations/               # Alembic migrations (versions/)
 ```
 
-## 2. Mẫu `DeclarativeBase` với Naming Convention Chuẩn (`db/base.py`)
+## 2. Mẫu `DeclarativeBase` với Naming Convention Chuẩn (`src/db/base.py`)
 
 Luôn khai báo `MetaData(naming_convention=...)` để Alembic tự động đặt tên khoá ngoại, index và constraint nhất quán:
 
@@ -57,7 +56,7 @@ class TimestampMixin:
     )
 ```
 
-## 3. Quy tắc Viết Truy vấn Async (`db/repositories/`)
+## 3. Quy tắc Viết Truy vấn Async (`src/db/repositories/`)
 - Sử dụng `from sqlalchemy import select, update, delete`.
 - Khi cần tải bảng liên kết (`relationship`), bắt buộc dùng `select(Model).options(selectinload(Model.items))` để tránh lỗi `MissingGreenlet` và lỗi hiệu năng **N+1 Query**.
 - Dùng `await session.flush()` và `await session.refresh(instance)` trong repository để lấy ID/default values trước khi tầng service `commit()`.
