@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_team_dev",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/dev_db",
 )
 
 engine = create_async_engine(

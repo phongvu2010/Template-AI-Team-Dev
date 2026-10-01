@@ -29,3 +29,7 @@ pythonpath = ["src"]
 asyncio_mode = "auto"
 testpaths = ["src/backend/tests", "src/db/tests"]
 addopts = "-v --tb=short"
+markers = [
+    "asyncio: mark test as asyncio coroutine",
+    "anyio: mark test to run with anyio",
+]
