@@ -12,7 +12,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`frontend-dev`, `qa-tester`, `
   - `npm --prefix src/frontend run build`
 - **Lệnh cấm tuyệt đối**:
   - Cấm `rm -rf`, `git reset`, `git checkout`.
-  - Cấm chạy lệnh `npm install` trần trong sandbox. Khi cần thêm package mới (như `lucide-react`, `zod`, `clsx`), cập nhật trực tiếp vào `dependencies` hoặc `devDependencies` trong `src/frontend/package.json` và gắn cờ `[DEPENDENCY REQUIRED]`.
+  - Cấm chạy lệnh `npm install` trần trong sandbox. Khi cần thêm package mới, cập nhật trực tiếp vào `dependencies` hoặc `devDependencies` trong `src/frontend/package.json` và gắn cờ `[DEPENDENCY REQUIRED]`.
   - Cấm sửa code ngoài `src/frontend/`.
 
 ---
@@ -24,13 +24,28 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`frontend-dev`, `qa-tester`, `
 
 ---
 
-## 3. Wave 1 Mocking & Trải Nghiệm Giao Diện (UX & A11y)
-- **Chiến lược Mocking Wave 1**: Khi Backend chưa triển khai (Wave 1), tạo mock fixtures tại `src/frontend/src/lib/api/mocks/<resource>.ts` bám sát `plan.md` và hỗ trợ flag `NEXT_PUBLIC_USE_MOCKS=true` để kiểm chứng UI độc lập, không để xảy ra unhandled fetch exception.
-- **Bắt buộc Xử lý Đủ 4 Trạng Thái UI**:
+## 3. Tiêu Chuẩn Kiến Trúc React 19 & Next.js 15 (Server-First & Streaming)
+
+### 3.1. Phân định Data Fetching (Server Component vs Client Component)
+- **Mặc định là Server Component**: Mọi `page.tsx` là async Server Component; fetch dữ liệu trực tiếp trên server qua `apiRequest<T>` để tối ưu SEO, streaming và LCP.
+- **Client Component tối giản**: Chỉ thêm `"use client"` khi component cần React hooks (`useState`, `useActionState`), event listeners hoặc browser APIs.
+
+### 3.2. Chuẩn mực React 19
+- **Form Actions & Mutations**: Ưu tiên sử dụng `useActionState` và `useFormStatus` cho form submission.
+- **Optimistic UI**: Dùng `useOptimistic` để cập nhật trạng thái UI ngay lập tức trước khi server phản hồi.
+- **Ref as a Prop**: Truyền `ref` trực tiếp như prop (`ref?: React.Ref<T>`). **Tuyệt đối không dùng `forwardRef()`**.
+- **Transitions**: Dùng `useTransition` / `startTransition` để wrap các state transitions không khẩn cấp.
+
+### 3.3. Streaming Suspense & 4 Trạng Thái Giao Diện
+- **Cấp độ Route**:
+  - Bắt buộc tạo `loading.tsx` chứa Skeleton loader để Next.js tự động streaming Suspense.
+  - Bắt buộc tạo `error.tsx` (`"use client"`) làm Error Boundary bắt lỗi runtime kèm nút gọi `reset()`.
+- **Cấp độ Component**: Bắt buộc xử lý trọn vẹn 4 trạng thái:
   1. **Loading state**: Skeleton loader hoặc spinner tương ứng layout.
   2. **Error state**: Alert thông báo lỗi rõ ràng kèm nút Thử lại (Retry).
   3. **Empty state**: Giao diện khi dữ liệu rỗng kèm nút hành động (CTA) tạo mới.
   4. **Success state**: Render dữ liệu chuẩn xác, responsive trên di động và máy tính.
+- **Tiện ích Nối Class Tailwind**: Luôn dùng hàm `cn(...)` từ `@/lib/utils` (kết hợp `clsx` + `tailwind-merge`) khi xử lý conditional classes, tránh nối chuỗi thô gây xung đột CSS specificity.
 - **Accessibility (A11y)**: Sử dụng HTML ngữ nghĩa (`<main>`, `<nav>`, `<form>`, `<button>`), mọi ô nhập phải có `<label htmlFor="...">`, nút icon phải có `aria-label`.
 
 ---

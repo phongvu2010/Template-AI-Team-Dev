@@ -130,13 +130,17 @@ export const MOCK_<RESOURCE>S: <Resource>[] = [
 ## 5. UI & State Architecture — Thiết kế Giao diện (`frontend-dev` — Đích: `src/frontend/`)
 
 - **Cấu trúc Routes (`src/frontend/src/app/...`)**:
-  - `/path/to/page`: Server Component hay Client Component (`"use client"`).
+  - `page.tsx`: Mặc định là **async Server Component** (data fetching trên server, truyền dữ liệu ban đầu xuống client).
+  - `loading.tsx`: Skeleton loader tự động kích hoạt Next.js Suspense Streaming.
+  - `error.tsx`: React Error Boundary (`"use client"`) bắt lỗi runtime cấp route kèm nút `reset()`.
+  - Component tương tác: Đặt `"use client"` cho component tương tác (form, filter bar, modal), sử dụng React 19 **`useActionState`** và **`useOptimistic`**.
 - **TypeScript Interfaces (`src/frontend/src/types/<module>.ts`)**: Khớp 100% với mục 2 và 4. Tuyệt đối không dùng `any`.
 - **Quy chuẩn 4 Trạng thái Giao diện (UI States)**:
   1. **Loading**: Hiển thị Skeleton loader tương ứng với layout danh sách/chi tiết.
   2. **Error**: Banner/Alert thông báo lỗi rõ ràng kèm nút "Thử lại" (Retry action).
   3. **Empty**: Giao diện khi không có bản ghi kèm nút hành động (CTA) tạo mới.
   4. **Success**: Render bảng/thẻ responsive, hỗ trợ điều hướng phím và A11y.
+- **Tiện ích Styling**: Luôn dùng hàm `cn(...)` từ `@/lib/utils` (`clsx` + `tailwind-merge`) khi xử lý conditional styling.
 
 ---
 
