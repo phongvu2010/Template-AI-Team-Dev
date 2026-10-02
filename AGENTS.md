@@ -88,6 +88,7 @@ Mỗi tác tử chỉ được phép thực thi các lệnh trong danh mục whi
 - **`db-dev`** (Chỉ thao tác trong `src/db/`):
   - `.venv/bin/ruff check src/db/`
   - `python3 -m py_compile src/db/...`
+  - `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` (khởi tạo migration khi không có PostgreSQL)
   - `alembic ...` (chỉ khi có PostgreSQL container)
   - `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`
 - **`backend-dev`** (Chỉ thao tác trong `src/backend/`):
@@ -104,6 +105,7 @@ Mỗi tác tử chỉ được phép thực thi các lệnh trong danh mục whi
 - **`code-reviewer`** (Chỉ thao tác thẩm định read-only):
   - `git status --short`
   - `git diff --stat`
+  - `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock' ':!*.min.*'`
   - `git diff`
 - **`tech-lead` (Orchestrator)**:
   - `git status`, `git add`, `git commit` đóng gói tính năng.
@@ -157,13 +159,16 @@ Khi nhận yêu cầu tính năng từ người dùng:
    - Kế hoạch thực thi 2-Wave.
 
 ### Bước 2: Giai đoạn Development (Quy trình 2-Wave)
-1. **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
+1. **Chiến lược Không gian làm việc (`Workspace: "inherit"`)**:
+   - Khi gọi `invoke_subagent` cho các Dev Squads, bắt buộc chỉ định `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) có ranh giới thư mục hoàn toàn độc lập, việc kế thừa workspace loại bỏ hoàn toàn nguy cơ xung đột Git, đồng thời giúp Wave 2 và QA nhìn thấy mã nguồn ngay lập tức mà không cần thao tác gộp nhánh (merge branch) thủ công.
+2. **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
    - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng một lệnh `invoke_subagent`.
-   - `db-dev` tạo SQLAlchemy Models, Repositories, Migrations và Seeds trong `src/db/` (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`).
-   - `frontend-dev` tạo TypeScript types, Mock fixtures và UI components trong `src/frontend/` (xử lý đủ 4 trạng thái: Loading, Error, Empty, Success).
-2. **Wave 2 (Triển khai `backend-dev`)**:
+   - `db-dev` tạo SQLAlchemy Models, Repositories, Migrations (dùng `generate_offline_migration.py` nếu không có PostgreSQL) và Seeds trong `src/db/` (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`).
+   - `frontend-dev` tạo TypeScript types, Mock fixtures và UI components trong `src/frontend/` (hỗ trợ `isMockMode()` với cờ `NEXT_PUBLIC_USE_MOCKS=true` để phát triển và kiểm chứng UI độc lập).
+3. **Wave 2 (Triển khai `backend-dev` & Đồng bộ Live API)**:
    - Ngay khi `db-dev` hoàn tất, gọi `backend-dev` trong `invoke_subagent`.
    - `backend-dev` tạo Pydantic v2 schemas, services nghiệp vụ và API routers trong `src/backend/`, kết nối trực tiếp với models tại `src/db/` qua `PYTHONPATH=src`.
+   - **Đồng bộ Mock → Live API**: Sau khi Backend hoàn thành các endpoints, chuyển `NEXT_PUBLIC_USE_MOCKS=false` để toàn bộ ứng dụng chuyển sang tích hợp trực tiếp với API thật của FastAPI.
 
 ### Bước 3: Giai đoạn Testing & Vòng Lặp Self-Healing (`qa-tester`)
 1. Gọi `invoke_subagent` với `TypeName: "qa-tester"`.
@@ -202,7 +207,10 @@ Khi nhận yêu cầu tính năng từ người dùng:
 
 ### Bước 4: Giai đoạn Code Review & Vòng Lặp Phản Hồi Review (`code-reviewer`)
 1. Khi `test-report.md` đạt `PASSED 100%`: Gọi `invoke_subagent` với `TypeName: "code-reviewer"`.
-2. `code-reviewer` dùng `git status` và `git diff` audit tập trung các thay đổi mới, chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
+2. `code-reviewer` thực thi **Token-Optimized Audit Protocol**:
+   - Chạy `git status --short` và `git diff --stat` để đo lường quy mô.
+   - Chạy `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock' ':!*.min.*'` để loại bỏ lockfiles, tập trung 100% token budget vào thẩm định kiến trúc, bảo mật OWASP, N+1 query và Data Contract Alignment.
+   - Chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
 3. **Vòng lặp Phản hồi Review (Review Feedback Loop)**:
    - Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`):
      - Tech Lead gửi tin nhắn qua `send_message` theo **Giao thức Chuẩn [REVIEW-FIX ACTION REQUIRED]**:

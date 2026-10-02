@@ -226,3 +226,12 @@ Tech Lead sẽ tự động điều phối:
 6. **Cross-DB Type Safety (UUID & ARRAY)**:
    - UUID khóa chính luôn dùng `from sqlalchemy import Uuid` kèm `default=uuid.uuid4` ở Python (hoặc kế thừa `UUIDPrimaryKeyMixin` từ `src/db/base.py`). Không dùng `server_default=text("gen_random_uuid()")`.
    - Danh sách mảng dùng `from sqlalchemy import JSON` (`default=list`) hoặc variant thay vì `ARRAY` trần để SQLite test không bị fail `CompileError`.
+7. **Đồng bộ Mock → Live API**:
+   - Trong Wave 1, Frontend sử dụng mock data thông qua `isMockMode()` (`NEXT_PUBLIC_USE_MOCKS=true`).
+   - Khi hoàn thành Wave 2, bắt buộc chuyển `NEXT_PUBLIC_USE_MOCKS=false` để kết nối trực tiếp với FastAPI backend live.
+8. **Chiến lược Không gian làm việc (`Workspace: "inherit"`)**:
+   - Khi gọi `invoke_subagent` cho các Dev Squads, chỉ định `"Workspace": "inherit"` vì ranh giới thư mục hoàn toàn độc lập (`src/db/` vs `src/frontend/`), giúp Wave 2 và QA nhìn thấy code mới ngay lập tức mà không cần merge branch.
+9. **Khởi tạo Migration Offline**:
+   - Khi không có PostgreSQL container, chạy `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` để tự động tạo file migration chuẩn có revision ID hợp lệ.
+10. **Tối ưu Token cho Code Review**:
+    - Dùng lệnh lọc `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock'` để loại bỏ lockfiles, dồn 100% token budget vào thẩm định kiến trúc, N+1 query và bảo mật.

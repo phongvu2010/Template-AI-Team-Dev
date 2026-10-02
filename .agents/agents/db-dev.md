@@ -23,6 +23,7 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
 - **Danh sách Lệnh Được Phép (Role-based Command Whitelist)**:
   - `.venv/bin/ruff check src/db/`
   - `python3 -m py_compile src/db/...`
+  - `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` (khởi tạo migration khi không có PostgreSQL)
   - `alembic ...` (chỉ khi có PostgreSQL container)
   - `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`
 - **Danh mục Lệnh Cấm Tuyệt đối (Strict Blacklist)**:
@@ -53,7 +54,8 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
 2. **Khởi tạo Repositories (`src/db/repositories/<module>.py`)**:
    - Viết các hàm async CRUD tái sử dụng, bọc `select()` chống N+1 query.
 3. **Quản lý Migration & Seeds (`src/db/migrations/` & `src/db/seeds/`)**:
-   - Tạo migration an toàn có đủ `upgrade()` và `downgrade()`.
+   - **Khi có PostgreSQL runtime**: Dùng `alembic revision --autogenerate -m "<slug>"`.
+   - **Khi không có PostgreSQL / Sandbox**: Chạy `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` để tự động tạo file migration skeleton chuẩn xác trong `src/db/migrations/versions/`, sau đó hoàn thiện các lệnh `op.create_table()` và `op.drop_table()`.
    - Tạo kịch bản seed dữ liệu mẫu idempotent tại `src/db/seeds/<module>_seed.py`.
 4. **Smoke Check & Bàn giao**:
    - Chạy `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/...`.

@@ -9,6 +9,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
 - **Lệnh được phép**:
   - `.venv/bin/ruff check src/db/`
   - `python3 -m py_compile src/db/...`
+  - `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` (khởi tạo migration khi không có PostgreSQL)
   - `alembic revision --autogenerate -m "<slug>"` & `alembic upgrade head` (khi PostgreSQL container hoạt động)
   - `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`
 - **Lệnh cấm tuyệt đối**:
@@ -35,7 +36,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
 - **Phân tách Migration & Testing**:
   - SQLite in-memory test (`:memory:`) được sinh bảng tự động qua `Base.metadata.create_all` trong `conftest.py`. Không áp dụng Alembic cho SQLite in-memory test.
   - Alembic chỉ dùng cho PostgreSQL runtime (`docker compose up -d postgres`).
-  - Trong sandbox không có PostgreSQL, tự tạo file migration chuẩn trong `src/db/migrations/versions/` có đủ `upgrade()` và `downgrade()`.
+  - Trong sandbox / môi trường không có PostgreSQL: Chạy `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` để tự động sinh file migration chuẩn xác (kèm ID revision hợp lệ) trong `src/db/migrations/versions/`, sau đó hoàn thiện logic `upgrade()` và `downgrade()`.
 - **Seed Data**: Đặt tại `src/db/seeds/<module>_seed.py`, đảm bảo tính idempotent (kiểm tra tồn tại trước khi add). Chạy qua `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
 
 ---

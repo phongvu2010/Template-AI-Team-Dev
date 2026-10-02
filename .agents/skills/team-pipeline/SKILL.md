@@ -32,11 +32,11 @@ Nhằm đảm bảo tính cô lập và toàn vẹn của hệ thống, mọi t�
 
 ### 2.1. Whitelist theo vai trò:
 - **`planner`**: Chỉ thao tác đọc/ghi file tài liệu (`view_file`, `write_to_file`).
-- **`db-dev`**: Chỉ chạy `.venv/bin/ruff check src/db/`, `python3 -m py_compile src/db/...`, `alembic ...`, `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
+- **`db-dev`**: Chỉ chạy `.venv/bin/ruff check src/db/`, `python3 -m py_compile src/db/...`, `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>`, `alembic ...`, `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
 - **`backend-dev`**: Chỉ chạy `.venv/bin/ruff check src/backend/`, `python3 -m py_compile src/backend/...`.
 - **`frontend-dev`**: Chỉ chạy `npm --prefix src/frontend run typecheck`, `npm --prefix src/frontend run lint`, `npm --prefix src/frontend run build`.
 - **`qa-tester`**: Chỉ chạy `.venv/bin/ruff check src/`, `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`, `npm --prefix src/frontend run typecheck`.
-- **`code-reviewer`**: Chỉ chạy `git status --short`, `git diff --stat`, `git diff`.
+- **`code-reviewer`**: Chỉ chạy `git status --short`, `git diff --stat`, `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock' ':!*.min.*'`, `git diff`.
 - **`tech-lead`**: Điều phối, git add, git commit.
 
 ### 2.2. Blacklist tuyệt đối:
@@ -61,13 +61,16 @@ Gọi `invoke_subagent`:
   - Ma trận truy xuất Acceptance Criteria (`AC-ID` -> `TC-ID`).
 
 ### Bước 2: Khởi chạy Đội ngũ Dev theo Quy trình 2-Wave
+- **Chiến lược Workspace Mode (`Workspace: "inherit"`)**:
+  - Khi gọi `invoke_subagent` cho các Dev Squads, bắt buộc đặt `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) thao tác trên các thư mục độc lập tuyệt đối, việc kế thừa workspace loại bỏ xung đột Git và giúp Wave 2 cùng QA nhìn thấy code ngay lập tức mà không cần merge branch.
 - **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
   - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng lệnh `invoke_subagent`.
-  - `db-dev` xây dựng models (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`), repositories async (dùng `selectinload`), migrations và seeds tại `src/db/`.
-  - `frontend-dev` xây dựng TypeScript types, API client wrapper, mock fixtures và UI components xử lý đủ 4 trạng thái (Loading, Error, Empty, Success) tại `src/frontend/`.
-- **Wave 2 (Triển khai `backend-dev`)**:
+  - `db-dev` xây dựng models (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`), repositories async (dùng `selectinload`), migrations (dùng `generate_offline_migration.py` nếu không có PostgreSQL) và seeds tại `src/db/`.
+  - `frontend-dev` xây dựng TypeScript types, API client wrapper, mock fixtures và UI components xử lý đủ 4 trạng thái (Loading, Error, Empty, Success) tại `src/frontend/` (hỗ trợ `isMockMode()` với cờ `NEXT_PUBLIC_USE_MOCKS=true` để phát triển và kiểm chứng UI độc lập).
+- **Wave 2 (Triển khai `backend-dev` & Đồng bộ Live API)**:
   - Ngay khi `db-dev` hoàn thành models, gọi `backend-dev` trong `invoke_subagent`.
   - `backend-dev` tạo Pydantic v2 schemas (`ConfigDict(from_attributes=True)`), services nghiệp vụ và API routers tại `src/backend/`, kết nối trực tiếp với models từ `src/db/` qua `PYTHONPATH=src`.
+  - **Đồng bộ Mock → Live API**: Sau khi Backend hoàn thành các endpoints, chuyển `NEXT_PUBLIC_USE_MOCKS=false` để toàn bộ ứng dụng chuyển sang tích hợp trực tiếp với API thật của FastAPI.
 
 ### Bước 3: Khởi chạy `qa-tester` & Vòng lặp Tự sửa lỗi (Self-Healing Loop)
 Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
@@ -107,7 +110,11 @@ Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
 ### Bước 4: Khởi chạy `code-reviewer` & Vòng lặp Phản hồi Review
 Khi `test-report.md` đạt `PASSED 100%`:
 - Gọi `invoke_subagent` với `TypeName: "code-reviewer"`.
-- `code-reviewer` audit qua `git status --short` và `git diff`, chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
+- `code-reviewer` thực thi **Token-Optimized Audit Protocol**:
+  1. `git status --short` quét nhanh các file mới và sửa đổi.
+  2. `git diff --stat` đo lường quy mô thay đổi.
+  3. `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock' ':!*.min.*'` loại trừ lockfiles/minified files, dồn 100% token budget vào logic nghiệp vụ và 5 tiêu chí Quality Gate.
+  4. Chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
 - **Vòng lặp Phản hồi Review (Review Feedback Loop)**:
   - Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`):
     - Tech Lead gửi tin nhắn `send_message` theo mẫu:

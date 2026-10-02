@@ -15,6 +15,7 @@ Runbook này hướng dẫn `db-dev` xây dựng tầng dữ liệu hiệu năng
 - **Lệnh được phép**:
   - `.venv/bin/ruff check src/db/`
   - `python3 -m py_compile src/db/...`
+  - `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` (khởi tạo migration khi không có PostgreSQL)
   - `alembic ...` (khi PostgreSQL container hoạt động)
   - `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`
 - **Lệnh cấm**: Cấm `rm -rf`, `dropdb`; cấm chạy `pip install` trần trong sandbox; cấm sửa file ngoài `src/db/`.
@@ -59,7 +60,18 @@ src/db/
 
 ---
 
-## 5. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop)
+## 5. Chiến Lược Quản Lý Migration (Online vs Offline)
+- **Kịch bản 1: Có PostgreSQL Runtime (`docker compose up -d postgres`)**:
+  - Chạy `alembic revision --autogenerate -m "<slug>"` để tự động sinh migration.
+  - Chạy `alembic upgrade head` để đồng bộ DB.
+- **Kịch bản 2: Không có PostgreSQL Runtime / Sandbox**:
+  - Chạy `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>`
+  - Script sẽ tự động đọc `src/db/migrations/versions/`, tìm `down_revision` gần nhất, sinh UUID revision ID 12 ký tự và tạo file template chuẩn.
+  - `db-dev` chỉ cần điền các lệnh `op.create_table(...)` trong `upgrade()` và `op.drop_table(...)` trong `downgrade()`.
+
+---
+
+## 6. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop)
 Khi nhận tin nhắn `[SELF-HEALING ACTION REQUIRED]` từ QA hoặc `[REVIEW-FIX ACTION REQUIRED]` từ Reviewer:
 1. Xác định nguyên nhân lỗi (sai sót model, thiếu index, vi phạm N+1 query).
 2. Sửa lỗi trong `src/db/`, chạy `.venv/bin/ruff check src/db/`.

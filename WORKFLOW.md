@@ -112,11 +112,11 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 | **Product Owner** | User (Con người) | Toàn dự án | Mọi lệnh hệ thống | - |
 | **Tech Lead** | Antigravity Main Agent | Toàn dự án | Điều phối subagents, `git status`, `git add`, `git commit` | Cấm `git reset --hard`, `git push --force` |
 | **Architect** | [`planner`](.agents/agents/planner.md) | `docs/specs/<slug>/` | Chỉ đọc/ghi file (`view_file`, `write_to_file`) | Cấm chạy shell commands làm đổi code |
-| **DB Specialist** | [`db-dev`](.agents/agents/db-dev.md) | `src/db/` | `.venv/bin/ruff check src/db/`, `python3 -m py_compile`, `alembic`, `runner.py` | Cấm `rm -rf`, `dropdb`, `pip install`, ghi file ngoài `src/db/` |
+| **DB Specialist** | [`db-dev`](.agents/agents/db-dev.md) | `src/db/` | `.venv/bin/ruff check src/db/`, `python3 -m py_compile`, `generate_offline_migration.py`, `alembic`, `runner.py` | Cấm `rm -rf`, `dropdb`, `pip install`, ghi file ngoài `src/db/` |
 | **Frontend Dev** | [`frontend-dev`](.agents/agents/frontend-dev.md) | `src/frontend/` | `npm --prefix src/frontend run typecheck`, `run lint`, `run build` | Cấm `npm install` trần, ghi file ngoài `src/frontend/` |
 | **Backend Dev** | [`backend-dev`](.agents/agents/backend-dev.md) | `src/backend/` | `.venv/bin/ruff check src/backend/`, `python3 -m py_compile` | Cấm `pip install` trần, ghi file ngoài `src/backend/` |
 | **QA Specialist** | [`qa-tester`](.agents/agents/qa-tester.md) | `docs/specs/`, `tests/` | `.venv/bin/ruff check src/`, `PYTHONPATH=src .venv/bin/pytest`, `run typecheck` | Cấm tự ý sửa code nghiệp vụ trong `src/` |
-| **Code Reviewer** | [`code-reviewer`](.agents/agents/code-reviewer.md) | `docs/specs/` | `git status --short`, `git diff --stat`, `git diff` | Cấm chạy lệnh sửa code hoặc thay đổi git |
+| **Code Reviewer** | [`code-reviewer`](.agents/agents/code-reviewer.md) | `docs/specs/` | `git status --short`, `git diff --stat`, `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock'`, `git diff` | Cấm chạy lệnh sửa code hoặc thay đổi git |
 
 ---
 
@@ -152,6 +152,8 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 ---
 
 ### Giai đoạn 3: Triển khai Lập trình Đợt kép (2-Wave Execution)
+- **Chiến lược Không gian làm việc (`Workspace: "inherit"`)**:
+  - Khi Tech Lead gọi `invoke_subagent` cho các Dev Squads, bắt buộc cấu hình `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) có phạm vi thư mục hoàn toàn tách biệt, việc dùng chung workspace không gây xung đột Git, đồng thời giúp Wave 2 và QA nhìn thấy code mới ngay lập tức mà không cần merge branch.
 - **Quy tắc phân vùng file tuyệt đối (File Ownership Isolation)**:
   - `db-dev`: Chỉ ghi trong `src/db/`.
   - `frontend-dev`: Chỉ ghi trong `src/frontend/`.
@@ -162,20 +164,24 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
   - Tạo model trong `src/db/models/<name>.py` (kế thừa `UUIDPrimaryKeyMixin` và `TimestampMixin`).
   - Mảng dữ liệu dùng `JSON` (kèm variant PG nếu cần) để SQLite test không bị lỗi.
   - Viết repository async chống N+1 bằng `selectinload()`.
-  - Tạo migration Alembic và seed data mẫu tại `src/db/seeds/<name>_seed.py`.
+  - **Quản lý Migration**:
+    - Khi có PostgreSQL runtime: `alembic revision --autogenerate -m "<slug>"`.
+    - Khi trong Sandbox / không có DB live: `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` để tự động tạo migration skeleton chuẩn có ID hợp lệ, sau đó điền `op.create_table()` và `op.drop_table()`.
+  - Tạo kịch bản seed dữ liệu mẫu idempotent tại `src/db/seeds/<name>_seed.py`.
 - **Nhánh 1B - Frontend Specialist (`frontend-dev` tại `src/frontend/`)**:
   - Tạo TypeScript types tại `src/frontend/src/types/` khớp 100% với Data Contract Matrix (`snake_case`, 0 `any`).
-  - Tạo mock fixtures tại `src/frontend/src/lib/api/mocks/` hỗ trợ cờ `NEXT_PUBLIC_USE_MOCKS=true`.
-  - Xây dựng UI components & pages Next.js xử lý trọn vẹn 4 trạng thái: Loading, Error, Empty, Success.
+  - Tạo mock fixtures tại `src/frontend/src/lib/api/mocks/` hỗ trợ `isMockMode()` và cờ `NEXT_PUBLIC_USE_MOCKS=true`.
+  - Xây dựng UI components & pages Next.js Server Component-First xử lý trọn vẹn 4 trạng thái: Loading (loading.tsx), Error (error.tsx), Empty, Success.
   - Kiểm tra kiểu: `npm --prefix src/frontend run typecheck`.
 
-#### Đợt 2 (Wave 2 - Kết nối Backend):
+#### Đợt 2 (Wave 2 - Kết nối Backend & Đồng bộ Live API):
 - **Backend Specialist (`backend-dev` tại `src/backend/`)**:
   - Kích hoạt ngay sau khi `db-dev` hoàn thành models.
   - Viết Pydantic v2 schemas tại `src/backend/app/schemas/` (`ConfigDict(from_attributes=True)`, giới hạn `max_length`, `ge`/`le`).
   - Viết Services xử lý business logic và transaction tại `src/backend/app/services/`.
   - Viết API routers tại `src/backend/app/api/v1/endpoints/` kết nối models trực tiếp từ `src/db/` thông qua `PYTHONPATH=src`.
   - Cắm router vào `api_router` tập trung tại `src/backend/app/api/v1/router.py`.
+  - **Đồng bộ Mock → Live API**: Sau khi Backend hoàn tất, chuyển `NEXT_PUBLIC_USE_MOCKS=false` để toàn bộ ứng dụng chuyển sang tích hợp trực tiếp với API thật của FastAPI.
 
 ---
 
@@ -205,8 +211,10 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 ---
 
 ### Giai đoạn 5: Thẩm định Code, Tối ưu & Bảo mật (`code-reviewer`)
-- **Chiến lược Token-Optimized Audit**:
-  - Chạy `git status --short` và `git diff` để tập trung phân tích chính xác những dòng code vừa thay đổi trong commit/working tree.
+- **Quy trình Thẩm định Tiết kiệm Token (Token-Optimized Audit Protocol)**:
+  1. `git status --short`: Quét nhanh biến động file mới (`??`) và file sửa đổi (`M`).
+  2. `git diff --stat`: Đo lường quy mô và phân bố dòng thay đổi.
+  3. `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock'`: Lọc bỏ lockfiles hoặc minified files, dồn 100% token budget vào logic nghiệp vụ và kiến trúc.
 - **Bảng Cổng Chất Lượng (Quality Gate Scorecard)**:
   1. *Khớp Hợp đồng*: Tên trường JSON và kiểu dữ liệu có khớp 100% với Data Contract Matrix trong `plan.md` không?
   2. *Database*: Có truy vấn N+1 không? Có thiếu index cho trường lọc không?
