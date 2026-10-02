@@ -27,7 +27,7 @@
 > - `[NIT]`: Gợi ý phong cách code / định dạng.
 
 ### 2.1. Mục cần sửa bắt buộc (`[CRITICAL]` & `[MAJOR]`)
-- Không có (hoặc liệt kê chi tiết kèm link `file:///...#L...` và đội phụ trách `db-dev` / `backend-dev` / `frontend-dev`).
+- Không có (hoặc liệt kê chi tiết kèm đường dẫn `src/...#L...` và đội phụ trách `db-dev` / `backend-dev` / `frontend-dev`).
 
 ### 2.2. Gợi ý cải tiến (`[MINOR]` & `[NIT]`)
 - ...

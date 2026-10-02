@@ -46,6 +46,6 @@ npm --prefix src/frontend run typecheck
 
 ### [BUG-01] `<Tiêu đề lỗi>`
 - **Tầng phụ trách**: `db-dev` (`src/db/`) | `backend-dev` (`src/backend/`) | `frontend-dev` (`src/frontend/`)
-- **File & Dòng**: `file:///...#L...`
+- **File & Dòng**: `src/...#L...`
 - **Nguyên nhân gốc (Root Cause)**: ...
 - **Hướng dẫn khắc phục**: ...

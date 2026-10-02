@@ -192,10 +192,10 @@ Tech Lead sẽ tự động điều phối:
 ## 8. Các Nguyên tắc Sống còn Cần Nhớ (Best Practices)
 
 1. **Tuyệt đối không xoá thư mục `src/`**:
-   - `src/` chứa các điểm neo (Anchor Points) và các file luật cục bộ [src/db/AGENTS.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/db/AGENTS.md), [src/backend/AGENTS.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/backend/AGENTS.md), [src/frontend/AGENTS.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/frontend/AGENTS.md).
+   - `src/` chứa các điểm neo (Anchor Points) và các file luật cục bộ [src/db/AGENTS.md](src/db/AGENTS.md), [src/backend/AGENTS.md](src/backend/AGENTS.md), [src/frontend/AGENTS.md](src/frontend/AGENTS.md).
    - Hãy giữ nguyên khung sườn khởi tạo này.
 2. **Cơ chế Auto-Discovery cho Models**:
-   - Mọi model SQLAlchemy mới được tạo trong `src/db/models/<name>.py` sẽ **tự động** được nạp vào Alembic nhờ [src/db/models/__init__.py](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/db/models/__init__.py).
+   - Mọi model SQLAlchemy mới được tạo trong `src/db/models/<name>.py` sẽ **tự động** được nạp vào Alembic nhờ [src/db/models/__init__.py](src/db/models/__init__.py).
 3. **Luôn dùng Virtualenv Runner**:
    - Luôn sử dụng `.venv/bin/pytest` và `.venv/bin/ruff` thay vì gọi lệnh trần.
 4. **Phân vùng File Tuyệt đối (File Isolation)**:
