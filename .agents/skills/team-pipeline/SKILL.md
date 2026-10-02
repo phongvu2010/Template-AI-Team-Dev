@@ -59,10 +59,12 @@ Khi `test-report.md` đạt `PASSED`:
 
 ### Bước 5: Hoàn tất & Đóng gói Git Commit
 Khi `review-report.md` đạt `APPROVED`:
-- Chạy `git status --short` kiểm tra các file thay đổi trong `src/` và `docs/specs/<feature-slug>/`.
+- Chạy `git status --short` kiểm tra các file thay đổi trong `src/`, `docs/specs/<feature-slug>/` và các file khai báo package (`pyproject.toml`, `package.json`).
 - Thực hiện commit theo chuẩn Conventional Commits:
   ```bash
   git add src/ docs/specs/<feature-slug>/
+  # Bổ sung khai báo dependencies nếu có thay đổi:
+  git add pyproject.toml src/frontend/package*.json 2>/dev/null || true
   git commit -m "feat(<feature-slug>): implement <feature name>
 
   - DB: add models & migrations in src/db/

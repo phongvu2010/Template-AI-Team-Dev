@@ -3,6 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.v1.router import api_router
+
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application instance."""
@@ -24,7 +26,11 @@ def create_app() -> FastAPI:
     async def health_check() -> dict[str, str]:
         return {"status": "ok"}
 
+    # Central API v1 router
+    app.include_router(api_router, prefix="/api/v1")
+
     return app
+
 
 
 app = create_app()

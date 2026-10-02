@@ -102,13 +102,15 @@ Sau khi `qa-tester` xác nhận `PASSED`:
 ### Bước 5: Giai đoạn Đóng gói & Git Commit (Packaging & Git Commit)
 Khi `review-report.md` đạt `APPROVED`:
 1. **Kiểm tra trạng thái Git**:
-   - Chạy `git status --short` để rà soát toàn bộ các file mới và thay đổi (`src/`, `docs/specs/<feature-slug>/`).
+   - Chạy `git status --short` để rà soát toàn bộ các file mới và thay đổi (`src/`, `docs/specs/<feature-slug>/`, cùng các file khai báo dependencies như `pyproject.toml`, `src/frontend/package*.json` nếu có cài thêm thư viện mới).
 2. **Tạo Commit chuẩn hóa (Conventional Commits)**:
    - Cấu trúc: `feat(<feature-slug>): <mô tả ngắn ngọn tính năng>`
-   - Nội dung chi tiết: Liệt kê các thành phần chính (DB models, API endpoints, Next.js UI, Tests, Specs).
+   - Nội dung chi tiết: Liệt kê các thành phần chính (DB models, API endpoints, Next.js UI, Tests, Specs, Dependencies nếu có).
    - Ví dụ lệnh thực thi:
      ```bash
      git add src/ docs/specs/<feature-slug>/
+     # Bổ sung khai báo dependencies nếu có thay đổi:
+     git add pyproject.toml src/frontend/package*.json 2>/dev/null || true
      git commit -m "feat(<feature-slug>): implement <feature name>
 
      - DB: add models & migrations in src/db/

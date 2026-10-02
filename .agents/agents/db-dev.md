@@ -29,6 +29,7 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
    - Sử dụng cú pháp kiểu mới: `Mapped[type]` và `mapped_column(...)`. Tuyệt đối không dùng `Column()` kiểu cũ của SQLAlchemy 1.x.
    - Luôn kế thừa từ `TimestampMixin` có `created_at` và `updated_at` có timezone (`DateTime(timezone=True)`, `server_default=func.now()`).
    - Đặt tên rõ ràng cho các `ForeignKey`, `UniqueConstraint`, `CheckConstraint` và `Index`.
+   - **Tương thích SQLite Test**: Sử dụng kiểu dữ liệu tiêu chuẩn SQLAlchemy (`Uuid`, `JSON`) thay vì kiểu riêng của dialect PostgreSQL (`dialects.postgresql.UUID` hay `JSONB`) để bộ test SQLite in-memory chạy mượt mà. Với kiểu Postgres đặc thù, dùng `with_variant()`.
 3. **Phòng chống lỗi N+1 & Async Safety (`src/db/repositories/`)**:
    - Thiết kế các hàm truy vấn/repository sử dụng `select()` kết hợp `selectinload()` hoặc `joinedload()` khi cần nạp quan hệ trong môi trường `AsyncSession`.
 4. **Quản lý Migration & Seed (`src/db/migrations/`)**:

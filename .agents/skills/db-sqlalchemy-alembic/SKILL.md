@@ -66,3 +66,17 @@ class TimestampMixin:
 - File `src/db/models/__init__.py` sử dụng cơ chế tự động tìm nạp (`pkgutil.iter_modules`) toàn bộ các model module khi `import db.models` được gọi từ `env.py`.
 - Nhờ cơ chế này, lệnh `alembic revision --autogenerate -m "..."` luôn phát hiện đầy đủ metadata của các bảng mới mà không bao giờ gặp lỗi thiếu model do quên export.
 
+## 5. Quy tắc Tương thích Kiểu Dữ liệu (Cross-DB Compatibility cho SQLite Test)
+Để bộ kiểm thử tự động với SQLite async in-memory (`conftest.py`) chạy hoàn hảo song song với PostgreSQL production:
+- **UUID**: Dùng `from sqlalchemy import Uuid` (`mapped_column(Uuid, primary_key=True, default=uuid4)`) thay vì import `UUID` từ dialect PostgreSQL.
+- **JSON / JSONB**: Sử dụng `from sqlalchemy import JSON` chuẩn hoặc variant:
+  ```python
+  from sqlalchemy import JSON
+  from sqlalchemy.dialects.postgresql import JSONB
+
+  # Hoạt động an toàn trên cả SQLite (test) và PostgreSQL (runtime)
+  metadata_col: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"), default=dict)
+  ```
+- **Boolean / Enums**: Dùng `Boolean` và `Enum(NativeEnum=False)` hoặc Python `StrEnum` để tương thích tự nhiên giữa cả hai engine.
+
+

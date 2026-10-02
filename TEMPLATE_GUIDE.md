@@ -137,13 +137,13 @@ docker compose up -d postgres
 Trước khi bắt đầu bất kỳ câu lệnh AI nào, hãy chạy lệnh kiểm tra toàn diện để đảm bảo chuỗi công cụ đã sẵn sàng:
 
 ```bash
-.venv/bin/ruff check src/ && PYTHONPATH=src .venv/bin/pytest src/backend/tests -v && npm --prefix src/frontend run typecheck
+.venv/bin/ruff check src/ && PYTHONPATH=src .venv/bin/pytest src/backend/tests -v && npm --prefix src/frontend run build
 ```
 
 **Kết quả kỳ vọng**:
 * **Ruff**: `All checks passed!`
 * **Pytest**: `2 passed in 0.02s` (Pass cả endpoint `/health` và session async DB)
-* **TypeScript**: `tsc --noEmit` hoàn tất sạch sẽ, không có lỗi kiểu.
+* **Frontend Build**: `✓ Compiled successfully` (Next.js App Router render 4/4 static pages, typecheck sạch sẽ).
 
 ---
 
@@ -177,7 +177,7 @@ Tech Lead sẽ tự động điều phối:
 3. Wave 2: Gọi `backend-dev` (`src/backend/`) kết nối `src/db/`.
 4. `qa-tester` $\to$ chạy ruff, pytest, typecheck $\to$ tạo `docs/specs/<feature-slug>/test-report.md`.
 5. `code-reviewer` $\to$ audit `git diff` $\to$ tạo `docs/specs/<feature-slug>/review-report.md`.
-6. Tự động đóng gói commit: `git commit -m "feat(<feature-slug>): ..."`
+6. Tự động đóng gói commit: `git add src/ docs/specs/<feature-slug>/ pyproject.toml src/frontend/package*.json 2>/dev/null && git commit -m "feat(<feature-slug>): ..."`
 
 ### Chế độ 2: Gọi Trực tiếp Từng Tác tử Chuyên biệt (Direct Squad Invocation)
 - **Cần bản thiết kế**: *"Nhờ `planner` thiết kế kiến trúc phân hệ Đơn hàng."*

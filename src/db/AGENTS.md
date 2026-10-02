@@ -18,3 +18,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
 6. **Tổ chức Models & Auto-Discovery (`src/db/models/`)**:
    - Mỗi model được định nghĩa trong một module riêng biệt (ví dụ `src/db/models/item.py`).
    - File `src/db/models/__init__.py` đã cài đặt cơ chế tự động tìm và nạp (auto-discovery) toàn bộ các module con để `Base.metadata` luôn nhận diện đầy đủ các bảng khi chạy `alembic revision --autogenerate`. Khuyến khích xuất khẩu rõ ràng trong `__all__` nếu cần.
+7. **Tương thích Testing (Cross-DB Compatibility cho SQLite Fallback)**:
+   - Bộ kiểm thử tự động sử dụng `sqlite+aiosqlite:///:memory:` để chạy cô lập nhanh mà không cần daemon PostgreSQL.
+   - Khi định nghĩa kiểu dữ liệu trong models, ưu tiên dùng các kiểu chuẩn SQLAlchemy 2.0 (`from sqlalchemy import Uuid, JSON` thay vì dialect Postgres `UUID` hay `JSONB`).
+   - Nếu bắt buộc dùng tính năng đặc thù PostgreSQL (ví dụ JSONB), hãy dùng variant: `JSON().with_variant(JSONB, "postgresql")` để SQLite không gặp lỗi `CompileError` khi chạy test.
