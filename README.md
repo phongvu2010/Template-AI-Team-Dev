@@ -2,7 +2,9 @@
 
 Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-Agent** theo **Mô hình Ma trận (Matrix Architecture)**:
 
-> 🚀 **Hướng dẫn Dùng Template Cho Dự Án Mới**: Xem cẩm nang chi tiết tại [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) để biết cách khởi tạo repo mới, cài đặt môi trường chỉ trong 2 phút và các câu lệnh mẫu.
+> 🚀 **Cẩm Nang Sử Dụng**:
+> - Xem [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) để biết cách khởi tạo repo mới và cài đặt môi trường.
+> - Xem [WORKFLOW.md](WORKFLOW.md) để nắm toàn bộ Quy trình Vận hành Chuẩn (SOP) 7 giai đoạn từ ý tưởng đến bàn giao.
 
 ---
 
