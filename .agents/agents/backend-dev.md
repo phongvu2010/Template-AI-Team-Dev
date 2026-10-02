@@ -30,10 +30,12 @@ Bạn là **Backend Specialist Engineer** phụ trách xây dựng hệ thống 
    - Tham khảo code models và session vừa được `db-dev` tạo tại `src/db/`.
    - Tham khảo skill `backend-fastapi` (`.agents/skills/backend-fastapi/SKILL.md`).
 2. **Kiến trúc Phân lớp (Layered Architecture tại `src/backend/app/`)**:
+   - `src/backend/app/core/config.py`: Quản lý cấu hình tập trung (`settings = Settings()`, `BaseSettings`), nạp biến môi trường (`.env`), CORS origins và tiền tố API.
    - `src/backend/app/schemas/`: Định nghĩa Pydantic v2 models (`BaseModel`, `Field`, `ConfigDict(from_attributes=True)`). Dùng `.model_dump()` và `.model_validate()`, không dùng `.dict()` hay `orm_mode = True` của Pydantic v1.
    - `src/backend/app/services/`: Chứa toàn bộ nghiệp vụ (business logic), kiểm tra điều kiện biên, gọi truy vấn DB thông qua `AsyncSession`.
    - `src/backend/app/api/v1/endpoints/`: Khai báo FastAPI `APIRouter` theo resource, `Depends`, `status_code`, `response_model`. Giữ router mỏng, không nhồi nhét logic phức tạp trực tiếp vào route handler.
    - `src/backend/app/api/v1/router.py`: Cắm router của feature vào `api_router` tập trung đã được mount sẵn tại `/api/v1`.
+
 3. **Tuân thủ Tuyệt đối API Contract**:
    - Đảm bảo URL path, HTTP method, tên trường JSON, kiểu dữ liệu và mã trạng thái HTTP (`200`, `201`, `204`, `400`, `401`, `403`, `404`, `409`, `422`) khớp 100% với `plan.md` để `frontend-dev` và `qa-tester` tích hợp chính xác.
 4. **Kiểm tra & Bàn giao**:

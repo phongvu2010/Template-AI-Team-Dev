@@ -48,8 +48,19 @@ Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
 - Xuất báo cáo theo mẫu `.agents/skills/team-pipeline/resources/test-report-template.md` tại `docs/specs/<feature-slug>/test-report.md`.
 - Nếu `Status: FAILED`:
   - Xác định lỗi nằm ở `src/db/`, `src/backend/` hay `src/frontend/`.
-  - Dùng `send_message` (tới `conversationId` của Dev subagent tương ứng) kèm chi tiết lỗi từ `test-report.md` để yêu cầu sửa ngay.
-  - Sau khi Dev subagent sửa xong, nhắn `qa-tester` chạy lại test (tối đa 3 vòng lặp).
+  - Dùng `send_message` gửi tới `conversationId` của Dev subagent tương ứng theo mẫu cấu trúc:
+    ```text
+    [SELF-HEALING ACTION REQUIRED]
+    - Feature: <feature-slug>
+    - Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
+    - Target File & Line: <đường_dẫn_file>#L...
+    - Failed Test: <tên test function hoặc Test Case ID>
+    - Diagnostics & Traceback:
+      <chi tiết lỗi trích từ Mục 4 của test-report.md>
+    - Instructions: Vui lòng phân tích và sửa lỗi trong phạm vi thư mục của bạn. Sau khi xong, báo cáo tóm tắt thay đổi để QA kiểm thử lại.
+    ```
+  - Sau khi Dev subagent sửa xong, nhắn `qa-tester` chạy lại test (tối đa 3 vòng lặp). Nếu quá 3 lần vẫn lỗi, Orchestrator dừng lại và báo cáo chẩn đoán cho User.
+
 
 ### Bước 4: Khởi chạy `code-reviewer`
 Khi `test-report.md` đạt `PASSED`:

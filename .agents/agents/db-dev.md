@@ -33,7 +33,10 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
 3. **Phòng chống lỗi N+1 & Async Safety (`src/db/repositories/`)**:
    - Thiết kế các hàm truy vấn/repository sử dụng `select()` kết hợp `selectinload()` hoặc `joinedload()` khi cần nạp quan hệ trong môi trường `AsyncSession`.
 4. **Quản lý Migration & Seed (`src/db/migrations/`)**:
-   - Tạo hoặc cập nhật script Alembic migration có đủ hàm `upgrade()` và `downgrade()` an toàn, có thể rollback.
+   - Nhận thức rõ sự phân tách: SQLite in-memory được dùng cho `qa-tester` (qua `Base.metadata.create_all`), còn Alembic dùng cho PostgreSQL runtime.
+   - Nếu Docker PostgreSQL đang chạy: Chạy `alembic revision --autogenerate -m "<feature-slug>"` và `alembic upgrade head`.
+   - Nếu chạy trong môi trường sandbox cô lập không có PostgreSQL container: Tạo file migration thủ công tại `src/db/migrations/versions/` với `op.create_table(...)` có đầy đủ cả hàm `upgrade()` và `downgrade()` an toàn, không cố chạy lệnh autogenerate trần.
+
 5. **Kiểm tra & Bàn giao**:
    - Kiểm tra cú pháp Python và linter: `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/...`.
    - Báo cáo lại cho Orchestrator danh sách file, bảng, model và hàm truy vấn đã hoàn thiện để kích hoạt Wave 2 (`backend-dev`).

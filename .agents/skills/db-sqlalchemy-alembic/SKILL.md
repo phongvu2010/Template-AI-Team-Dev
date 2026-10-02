@@ -79,4 +79,13 @@ class TimestampMixin:
   ```
 - **Boolean / Enums**: Dùng `Boolean` và `Enum(NativeEnum=False)` hoặc Python `StrEnum` để tương thích tự nhiên giữa cả hai engine.
 
+## 6. Quy chuẩn Quản lý Migration: PostgreSQL Live vs SQLite Testing
+- **SQLite In-Memory (`:memory:`)**: Dùng cho `qa-tester` kiểm thử cô lập tức thì. Schema được tự động sinh bằng `Base.metadata.create_all(conn)` trong `conftest.py`. Không áp dụng Alembic migration cho SQLite in-memory.
+- **PostgreSQL Thật (Docker/Production)**: Schema được quản lý bằng Alembic (`src/db/migrations/versions/`).
+- **Quy trình Migration của `db-dev`**:
+  - *Nếu Docker PostgreSQL đang chạy*: Khởi chạy `docker compose up -d postgres`, thực thi `alembic revision --autogenerate -m "<slug>"`, kiểm tra file sinh ra và chạy `alembic upgrade head`.
+  - *Nếu trong Sandbox cô lập không có PostgreSQL*: Tự viết file migration tại `src/db/migrations/versions/<timestamp>_<slug>.py` với đầy đủ `op.create_table(...)` cho hàm `upgrade()` và `op.drop_table(...)` cho hàm `downgrade()`. Tuyệt đối không gọi lệnh trần autogenerate tránh treo kết nối.
+  - *Kiểm tra*: Luôn chạy `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/migrations/versions/*.py`.
+
+
 

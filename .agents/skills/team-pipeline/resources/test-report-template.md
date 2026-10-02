@@ -45,7 +45,13 @@ npm --prefix src/frontend run typecheck
 > Nếu tất cả đều `PASSED`, ghi: *"Không phát hiện lỗi."*
 
 ### [BUG-01] `<Tiêu đề lỗi>`
-- **Tầng phụ trách**: `db-dev` (`src/db/`) | `backend-dev` (`src/backend/`) | `frontend-dev` (`src/frontend/`)
-- **File & Dòng**: `src/...#L...`
+- **Tầng phụ trách (Target Agent)**: `db-dev` (`src/db/`) | `backend-dev` (`src/backend/`) | `frontend-dev` (`src/frontend/`)
+- **File & Dòng (Target File & Line)**: `src/...#L...`
+- **Mã Test Case Thất bại (Failed Test)**: `TC-01` / `test_function_name`
+- **Chi tiết Traceback / Diagnostics**:
+  ```text
+  <dán traceback hoặc output lỗi chính xác tại đây>
+  ```
 - **Nguyên nhân gốc (Root Cause)**: ...
-- **Hướng dẫn khắc phục**: ...
+- **Hướng dẫn khắc phục (Suggested Fix)**: ...
+

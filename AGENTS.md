@@ -89,7 +89,20 @@ Sau khi `backend-dev` và `frontend-dev` hoàn thành:
    - Chạy test Frontend (`npm --prefix src/frontend run typecheck` hoặc `vitest`).
    - Xuất kết quả vào `docs/specs/<feature-slug>/test-report.md`.
 3. **Vòng lặp Sửa lỗi (Self-Healing Bug Fix Loop)**:
-   - Nếu `test-report.md` báo `FAILED`, Orchestrator phân tích nguyên nhân lỗi thuộc tầng nào (`src/db/`, `src/backend/`, hay `src/frontend/`) và gửi tin nhắn (`send_message`) hoặc gọi lại đúng Dev subagent đó để sửa lỗi, sau đó yêu cầu `qa-tester` chạy lại (tối đa 3 vòng lặp).
+   - Nếu `test-report.md` báo `FAILED`, Orchestrator phân tích lỗi thuộc tầng nào (`src/db/`, `src/backend/`, hay `src/frontend/`).
+   - Gửi tin nhắn (`send_message` tới conversationId của Dev subagent tương ứng) theo **Giao thức Thông điệp Chuẩn (Standard Dispatch Protocol)**:
+     ```text
+     [SELF-HEALING ACTION REQUIRED]
+     - Feature: <feature-slug>
+     - Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
+     - Target File & Line: <đường_dẫn_file>#L...
+     - Failed Test: <tên test function hoặc Test Case ID>
+     - Diagnostics & Traceback:
+       <trích xuất lỗi chi tiết từ Mục 4 của test-report.md>
+     - Instructions: Phân tích nguyên nhân và khắc phục lỗi. TUYỆT ĐỐI chỉ chỉnh sửa trong phạm vi thư mục được phân quyền của bạn. Sau khi sửa xong, báo cáo tóm tắt thay đổi để QA kiểm thử lại.
+     ```
+   - Sau khi Dev subagent báo hoàn tất, Orchestrator yêu cầu `qa-tester` chạy lại kiểm thử (tối đa 3 vòng lặp). Nếu vượt quá 3 vòng lặp mà vẫn `FAILED`, Orchestrator tạm dừng và xuất báo cáo chẩn đoán cho User.
+
 
 ### Bước 4: Giai đoạn Code Review (`code-reviewer`)
 Sau khi `qa-tester` xác nhận `PASSED`:

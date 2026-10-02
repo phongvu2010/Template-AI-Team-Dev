@@ -203,3 +203,7 @@ Tech Lead sẽ tự động điều phối:
    - `backend-dev` chỉ ghi `src/backend/`.
    - `frontend-dev` chỉ ghi `src/frontend/`.
    - `qa-tester` & `code-reviewer` không sửa code nghiệp vụ mà chỉ báo cáo lại cho Dev Squad sửa chữa thông qua vòng lặp Self-Healing.
+5. **Phân biệt Alembic Migration và SQLite Testing**:
+   - Bộ test tự động (`pytest`) sử dụng SQLite async in-memory khởi tạo qua `Base.metadata.create_all`, hoàn toàn độc lập và không phụ thuộc vào daemon PostgreSQL hay Alembic migrations.
+   - Alembic chỉ quản lý schema cho PostgreSQL runtime thật (`docker compose up -d postgres`).
+

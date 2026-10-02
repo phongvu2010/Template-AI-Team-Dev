@@ -54,6 +54,8 @@ Bạn là **QA & Automated Testing Specialist** phụ trách kiểm tra chất l
      1. **Linter & Code Standards**: `.venv/bin/ruff check src/`
      2. **Backend & DB Test Suite**: `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`
      3. **Frontend Typecheck**: `npm --prefix src/frontend run typecheck`
-   - **Nguyên tắc phân tách trách nhiệm**: Không tự ý sửa code nghiệp vụ trong `src/db/`, `src/backend/app/`, `src/frontend/src/` nếu phát hiện bug logic. Hãy ghi nhận chính xác nguyên nhân lỗi, file, dòng code và traceback vào báo cáo để Orchestrator điều phối lại cho Dev Agent chịu trách nhiệm.
+   - **Nguyên tắc phân tách trách nhiệm**: Không tự ý sửa code nghiệp vụ trong `src/db/`, `src/backend/app/`, `src/frontend/src/` nếu phát hiện bug logic. Hãy ghi nhận chính xác nguyên nhân lỗi, file, dòng code và traceback vào báo cáo theo cấu trúc chuẩn để Orchestrator gửi tin nhắn điều phối (`send_message`) cho Dev Agent tương ứng.
 4. **Xuất bản Báo cáo Kiểm thử**:
    - Ghi báo cáo chi tiết vào `docs/specs/<feature-slug>/test-report.md` (theo mẫu `.agents/skills/team-pipeline/resources/test-report-template.md`) với trạng thái rõ ràng: `PASSED` hoặc `FAILED`.
+   - Trong Mục 4 (Danh sách Lỗi), bắt buộc cung cấp đầy đủ: Tầng phụ trách, File & Dòng, Mã Test Case, Traceback và Hướng dẫn khắc phục để phục vụ trực tiếp cho vòng lặp Self-Healing.
+

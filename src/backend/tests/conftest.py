@@ -18,8 +18,10 @@ from sqlalchemy.pool import StaticPool
 
 from backend.app.main import app
 from db.base import Base
+from db.session import get_db_session
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
 
 _test_engine: AsyncEngine | None = None
 _testing_session_local: async_sessionmaker[AsyncSession] | None = None
@@ -76,10 +78,40 @@ async def async_client(
 ) -> AsyncGenerator[AsyncClient, None]:
     """HTTP async test client configured with FastAPI app.
 
-    If the test or another fixture uses async_db_session, get_db_session will be overridden.
+    If the test also requests `async_db_session`, `get_db_session` is automatically
+    overridden to that in-memory SQLite session.
     """
+    if "async_db_session" in request.fixturenames:
+        db_session = request.getfixturevalue("async_db_session")
+
+        async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+            yield db_session
+
+        app.dependency_overrides[get_db_session] = _override_get_db
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def client(
+    async_db_session: AsyncSession,
+) -> AsyncGenerator[AsyncClient, None]:
+    """HTTP async test client with `get_db_session` automatically overridden to in-memory SQLite.
+
+    Use this fixture for testing API routes that inject `Depends(get_db_session)` to ensure
+    all database interactions execute against the isolated in-memory SQLite database.
+    """
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield async_db_session
+
+    app.dependency_overrides[get_db_session] = _override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+

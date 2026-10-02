@@ -22,3 +22,11 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
    - Bộ kiểm thử tự động sử dụng `sqlite+aiosqlite:///:memory:` để chạy cô lập nhanh mà không cần daemon PostgreSQL.
    - Khi định nghĩa kiểu dữ liệu trong models, ưu tiên dùng các kiểu chuẩn SQLAlchemy 2.0 (`from sqlalchemy import Uuid, JSON` thay vì dialect Postgres `UUID` hay `JSONB`).
    - Nếu bắt buộc dùng tính năng đặc thù PostgreSQL (ví dụ JSONB), hãy dùng variant: `JSON().with_variant(JSONB, "postgresql")` để SQLite không gặp lỗi `CompileError` khi chạy test.
+8. **Quy chuẩn Phân tách Alembic Migration & SQLite Testing**:
+   - **SQLite In-Memory (`:memory:`)**: Dùng độc quyền cho testing tự động (`pytest`). Schema được khởi tạo tức thì qua `Base.metadata.create_all(conn)` trong `conftest.py`. **Tuyệt đối không chạy Alembic migrations trên SQLite in-memory**.
+   - **PostgreSQL Thật (Docker / Production)**: Dùng cho Runtime thực tế và quản lý version schema bằng Alembic trong `src/db/migrations/versions/`.
+   - **Quy trình tạo Migration của `db-dev`**:
+     1. *Khi Docker PostgreSQL đang chạy*: Chạy `alembic revision --autogenerate -m "<slug>"`, kiểm tra file sinh ra và chạy `alembic upgrade head`.
+     2. *Khi chạy trong môi trường cô lập / Sandbox không có PostgreSQL*: `db-dev` tự tay tạo/viết file migration trong `src/db/migrations/versions/<timestamp>_<slug>.py` sử dụng các lệnh chuẩn `op.create_table(...)` có đủ `upgrade()` và `downgrade()`. Không cố gọi lệnh trần `alembic revision --autogenerate` để tránh bị connection timeout.
+     3. *Kiểm tra chất lượng*: Luôn chạy `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/migrations/versions/*.py`.
+
