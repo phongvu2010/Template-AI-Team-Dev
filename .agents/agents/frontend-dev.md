@@ -23,8 +23,9 @@ Bạn là **Frontend Specialist Engineer** phụ trách xây dựng giao diện 
 1. **Đọc Thiết kế & Quy chuẩn**:
    - Đọc kỹ `docs/specs/<feature-slug>/plan.md` (phần API Contract và UI & State Architecture).
    - Tham khảo skill `frontend-nextjs` (`.agents/skills/frontend-nextjs/SKILL.md`).
-2. **TypeScript & Tích hợp API (`src/frontend/src/types/` & `src/frontend/src/lib/api/`)**:
+2. **TypeScript, Mocking & Tích hợp API (`src/frontend/src/types/` & `src/frontend/src/lib/api/`)**:
    - Khai báo đầy đủ TypeScript interfaces tại `src/frontend/src/types/` khớp 100% với JSON Request/Response trong `plan.md`. Tuyệt đối không dùng `any`.
+   - **Chiến lược Mocking Wave 1**: Do Backend chưa hoàn tất ở Wave 1, tạo mock data fixtures tại `src/frontend/src/lib/api/mocks/` bám sát `plan.md` và hỗ trợ cờ `NEXT_PUBLIC_USE_MOCKS=true` (hoặc fallback tự động) để giao diện có thể hiển thị và kiểm chứng trực quan ngay lập tức mà không phụ thuộc vào backend live.
    - Xây dựng hàm gọi API tập trung tại `src/frontend/src/lib/api/` với xử lý lỗi chuẩn xác.
 3. **Next.js App Router & Trải nghiệm Người dùng (UX)**:
    - Mặc định ưu tiên Server Components; chỉ thêm `"use client"` cho các component cần tương tác (`useState`, `useEffect`, form events).

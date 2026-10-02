@@ -30,6 +30,12 @@ Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-
                                   ┌────────────────────────┐
                                   │    4. CODE REVIEWER    │
                                   │ (Token-optimized diff) │
+                                  └───────────┬────────────┘
+                                              │
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │   5. COMMIT & HANDOFF  │
+                                  │ (Conventional Commits) │
                                   └────────────────────────┘
 ```
 
@@ -98,6 +104,7 @@ Agent chính (**Tech Lead**) sẽ tự động:
 3. **Wave 2**: Gọi `backend-dev` viết router & service trong `src/backend/` kết nối trực tiếp `src/db/`.
 4. Gọi `qa-tester` chạy bộ kiểm thử tự động với `PYTHONPATH=src` và xuất `test-report.md`.
 5. Gọi `code-reviewer` audit qua `git diff` và xuất `review-report.md` (`APPROVED`).
+6. **Đóng gói & Commit**: Tự động rà soát `git status` và tạo commit chuẩn Conventional Commits `feat(<slug>): ...` ghi nhận mốc hoàn thành.
 
 ### Cách 2: Gọi Trực tiếp Từng Squad hoặc Giai đoạn
 - *"Nhờ `planner` thiết kế kiến trúc phân hệ Sản phẩm."*

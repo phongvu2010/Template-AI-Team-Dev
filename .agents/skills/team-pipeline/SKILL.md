@@ -20,6 +20,7 @@ Mọi tính năng đều được định danh bằng một `<feature-slug>` (d�
 | **2C. Wave 2 (Backend)** | `backend-dev` | `plan.md` (API Contract) + `src/db/` | Code trong `src/backend/` (Schemas, Services, Routers kết nối `src/db/`) |
 | **3. Testing** | `qa-tester` | `plan.md` + Code (`src/db/`, `src/backend/`, `src/frontend/`) | Test suites (`PYTHONPATH=src`) + `docs/specs/<feature-slug>/test-report.md` ([Mẫu](./resources/test-report-template.md)) |
 | **4. Review** | `code-reviewer` | `plan.md` + `test-report.md` + `git diff` | `docs/specs/<feature-slug>/review-report.md` ([Mẫu](./resources/review-report-template.md)) |
+| **5. Packaging** | `tech-lead` | `review-report.md` (`APPROVED`) + Git status | Conventional Git commit + Handoff report cho User |
 
 ---
 
@@ -36,22 +37,38 @@ Sau khi `plan.md` hoàn tất:
 - **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
   - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng một lệnh `invoke_subagent`.
   - `db-dev` xây dựng models, migrations và repositories trong `src/db/`.
-  - `frontend-dev` xây dựng types, API client và UI components trong `src/frontend/` (hoàn toàn độc lập nhờ API Contract đã có trong `plan.md`).
+  - `frontend-dev` xây dựng types, API client, mock fixtures và UI components trong `src/frontend/` (hoàn toàn độc lập nhờ API Contract và Mock fixtures đã có trong `plan.md`).
 - **Wave 2 (Triển khai `backend-dev`)**:
   - Ngay khi `db-dev` hoàn thành models trong `src/db/`, gọi `backend-dev` trong `invoke_subagent`.
   - `backend-dev` viết schemas, services và API routes trong `src/backend/`, kết nối trực tiếp với models từ `src/db/` (`from db.models...`) thông qua `PYTHONPATH=src`.
 
 ### Bước 3: Khởi chạy `qa-tester` & Vòng lặp Tự sửa lỗi (Self-Healing Loop)
 Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
-- Yêu cầu `qa-tester` đọc `plan.md`, viết và chạy test thực tế với `PYTHONPATH=src pytest src/backend/tests` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback) và `tsc --noEmit`.
+- Yêu cầu `qa-tester` đọc `plan.md`, viết và chạy test thực tế với `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback) và `npm --prefix src/frontend run typecheck`.
 - Xuất báo cáo theo mẫu `.agents/skills/team-pipeline/resources/test-report-template.md` tại `docs/specs/<feature-slug>/test-report.md`.
 - Nếu `Status: FAILED`:
   - Xác định lỗi nằm ở `src/db/`, `src/backend/` hay `src/frontend/`.
   - Dùng `send_message` (tới `conversationId` của Dev subagent tương ứng) kèm chi tiết lỗi từ `test-report.md` để yêu cầu sửa ngay.
   - Sau khi Dev subagent sửa xong, nhắn `qa-tester` chạy lại test (tối đa 3 vòng lặp).
 
-### Bước 4: Khởi chạy `code-reviewer` & Nghiệm thu Cuối cùng
+### Bước 4: Khởi chạy `code-reviewer`
 Khi `test-report.md` đạt `PASSED`:
 - Gọi `invoke_subagent` với `TypeName: "code-reviewer"`.
 - Yêu cầu `code-reviewer` dùng `git status` và `git diff` để audit tập trung, tiết kiệm token, kiểm tra kiến trúc, bảo mật, hiệu năng (N+1 query) và xuất `docs/specs/<feature-slug>/review-report.md`.
-- Nếu Verdict là `CHANGES_REQUESTED`, điều phối Dev subagent sửa các mục `[CRITICAL]` / `[MAJOR]` và kiểm tra lại trước khi bàn giao cho User.
+- Nếu Verdict là `CHANGES_REQUESTED`, điều phối Dev subagent sửa các mục `[CRITICAL]` / `[MAJOR]` và kiểm tra lại trước khi chuyển sang Bước 5.
+
+### Bước 5: Hoàn tất & Đóng gói Git Commit
+Khi `review-report.md` đạt `APPROVED`:
+- Chạy `git status --short` kiểm tra các file thay đổi trong `src/` và `docs/specs/<feature-slug>/`.
+- Thực hiện commit theo chuẩn Conventional Commits:
+  ```bash
+  git add src/ docs/specs/<feature-slug>/
+  git commit -m "feat(<feature-slug>): implement <feature name>
+
+  - DB: add models & migrations in src/db/
+  - Backend: implement FastAPI routers & services in src/backend/
+  - Frontend: build Next.js UI & typed API client in src/frontend/
+  - Testing & Review: 100% test passed, reviewed and approved
+  - Specs: docs/specs/<feature-slug>/plan.md"
+  ```
+- Tổng hợp báo cáo nghiệm thu hoàn tất cho User.

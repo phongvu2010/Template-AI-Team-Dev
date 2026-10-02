@@ -26,10 +26,14 @@ Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi
       │      └── Xuất bản: `docs/specs/<feature-slug>/test-report.md`
       │          (Nếu FAILED -> Điều phối ngược lại Dev Squad tương ứng để fix)
       │
-      └──► Phase 4: CODE REVIEW (`code-reviewer`)
-             └── Token-optimized audit qua `git diff` + `plan.md` (Bảo mật, N+1, Type Safety)
-             └── Xuất bản: `docs/specs/<feature-slug>/review-report.md`
-                 (Verdict: `APPROVED` hoặc `CHANGES_REQUESTED`)
+      ├──► Phase 4: CODE REVIEW (`code-reviewer`)
+      │      └── Token-optimized audit qua `git diff` + `plan.md` (Bảo mật, N+1, Type Safety)
+      │      └── Xuất bản: `docs/specs/<feature-slug>/review-report.md`
+      │          (Verdict: `APPROVED` hoặc `CHANGES_REQUESTED`)
+      │
+      └──► Phase 5: PACKAGING & COMMIT (Tech Lead Orchestrator)
+             └── Kiểm tra `git status`, tạo commit chuẩn Conventional Commits
+             └── Đóng gói mốc bàn giao tính năng cho User
 ```
 
 ---
@@ -92,7 +96,27 @@ Sau khi `qa-tester` xác nhận `PASSED`:
 2. **Tối ưu Context Token**: `code-reviewer` dùng `git status` và `git diff` để tập trung audit đúng những dòng code mới thay đổi trong `src/`, đối chiếu với `plan.md` và `test-report.md`.
 3. Xuất kết quả vào `docs/specs/<feature-slug>/review-report.md`.
 4. Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`), Orchestrator điều phối Dev subagent tương ứng khắc phục và yêu cầu `qa-tester` / `code-reviewer` xác nhận lại.
-5. Khi Verdict đạt `APPROVED`, tổng hợp báo cáo ngắn gọn cho User kèm liên kết tới các file đã tạo và bộ tài liệu trong `docs/specs/<feature-slug>/`.
+5. Khi Verdict đạt `APPROVED`, chuyển sang Bước 5 để đóng gói commit.
+
+### Bước 5: Giai đoạn Đóng gói & Git Commit (Packaging & Git Commit)
+Khi `review-report.md` đạt `APPROVED`:
+1. **Kiểm tra trạng thái Git**:
+   - Chạy `git status --short` để rà soát toàn bộ các file mới và thay đổi (`src/`, `docs/specs/<feature-slug>/`).
+2. **Tạo Commit chuẩn hóa (Conventional Commits)**:
+   - Cấu trúc: `feat(<feature-slug>): <mô tả ngắn ngọn tính năng>`
+   - Nội dung chi tiết: Liệt kê các thành phần chính (DB models, API endpoints, Next.js UI, Tests, Specs).
+   - Ví dụ lệnh thực thi:
+     ```bash
+     git add src/ docs/specs/<feature-slug>/
+     git commit -m "feat(<feature-slug>): implement <feature name>
+
+     - DB: add models & migrations in src/db/
+     - Backend: implement FastAPI routers & services in src/backend/
+     - Frontend: build Next.js UI & typed API client in src/frontend/
+     - Testing & Review: 100% test passed, reviewed and approved
+     - Specs: docs/specs/<feature-slug>/plan.md"
+     ```
+3. **Báo cáo Hoàn thành cho User**: Tổng hợp báo cáo ngắn gọn kèm commit hash, liên kết tới các file đã tạo và bộ tài liệu trong `docs/specs/<feature-slug>/`.
 
 ---
 

@@ -53,6 +53,17 @@
   - `400 Bad Request`: Dữ liệu vi phạm quy tắc nghiệp vụ.
   - `404 Not Found`: Không tìm thấy bản ghi.
   - `422 Unprocessable Entity`: Lỗi xác thực schema Pydantic.
+- **Wave 1 Mock Fixture (`src/frontend/src/lib/api/mocks/<resource>.ts`)**:
+```json
+[
+  {
+    "id": "1",
+    "title": "Mẫu dữ liệu kiểm thử Wave 1",
+    "description": "Dùng để kiểm thử UI 4 trạng thái khi Backend chưa hoàn tất",
+    "created_at": "2026-10-01T00:00:00Z"
+  }
+]
+```
 
 ---
 

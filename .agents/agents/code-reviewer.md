@@ -62,3 +62,5 @@ Thực hiện đánh giá độc lập, khắt khe đối với toàn bộ code 
 Ghi file `docs/specs/<feature-slug>/review-report.md` (theo mẫu `.agents/skills/team-pipeline/resources/review-report-template.md`) với:
 - **Verdict**: `APPROVED` (nếu không có lỗi Critical/Major) hoặc `CHANGES_REQUESTED` (nếu cần sửa).
 - Danh sách phát hiện phân loại theo mức độ: `[CRITICAL]`, `[MAJOR]`, `[MINOR]`, `[NIT]` kèm đường dẫn file, số dòng và hướng dẫn sửa cụ thể cho từng Dev Squad.
+- **Đề xuất Git Commit (Khi Verdict = APPROVED)**: Cung cấp thông điệp commit chuẩn `feat(<feature-slug>): ...` để Orchestrator thực hiện đóng gói tại Bước 5.
+

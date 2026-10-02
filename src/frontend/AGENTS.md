@@ -16,3 +16,5 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`frontend-dev`, `qa-tester`, `
 4. **Accessibility (A11y) & UX**:
    - Sử dụng thẻ HTML ngữ nghĩa (`<main>`, `<section>`, `<nav>`, `<button>`, `<form>`).
    - Mọi ô nhập liệu phải có `<label htmlFor="...">` và thông báo lỗi validation rõ ràng.
+5. **Wave 1 Mocking Strategy**:
+   - Khi Backend chưa triển khai (Wave 1), tạo mock fixtures tại `src/lib/api/mocks/` bám sát `plan.md` để test UI độc lập, không để xảy ra unhandled fetch exception khi render các trạng thái giao diện.

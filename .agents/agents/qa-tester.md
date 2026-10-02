@@ -21,13 +21,17 @@ Bạn là **QA & Automated Testing Specialist** phụ trách kiểm thử toàn 
 - **Báo cáo đầu ra**: `docs/specs/<feature-slug>/test-report.md`.
 
 ## Thiết lập Môi trường Test Chuẩn
-1. **PYTHONPATH**:
-   - Khi chạy lệnh pytest, luôn cấu hình `PYTHONPATH=src` (đã được mặc định trong `pyproject.toml`):
+1. **Môi trường & PYTHONPATH**:
+   - Khi chạy pytest, ưu tiên sử dụng virtualenv `.venv` kèm `PYTHONPATH=src`:
      ```bash
-     PYTHONPATH=src pytest src/backend/tests -v
+     PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v
+     ```
+   - Khi kiểm tra Frontend:
+     ```bash
+     npm --prefix src/frontend run typecheck
      ```
 2. **Cơ chế Fallback Test Database**:
-   - Để bộ test chạy độc lập và ổn định trong mọi môi trường (kể cả khi không có PostgreSQL thật đang chạy), fixture trong `conftest.py` nên ưu tiên sử dụng `sqlite+aiosqlite:///:memory:` cho các bài test async DB/API.
+   - Để bộ test chạy độc lập và ổn định trong mọi môi trường (kể cả khi không có PostgreSQL thật đang chạy), fixture trong `conftest.py` ưu tiên sử dụng `sqlite+aiosqlite:///:memory:` cho các bài test async DB/API.
 
 ## Quy trình Thực thi
 1. **Đối chiếu Thiết kế & Code thực tế**:

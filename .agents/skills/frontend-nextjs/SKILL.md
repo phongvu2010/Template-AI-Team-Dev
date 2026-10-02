@@ -73,3 +73,24 @@ export async function apiRequest<T>(
 - **Không dùng `any`**: Mọi props, state và API response đều phải có kiểu tường minh trong `src/types/`.
 - **Đầy đủ 4 Trạng thái UI**: `Loading` (skeleton/spinner), `Error` (alert + nút Retry), `Empty` (trạng thái trống + hướng dẫn), `Success` (dữ liệu chính).
 - **Accessibility**: Mọi `<input>` phải gắn với `<label htmlFor="...">`, nút icon phải có `aria-label`, trạng thái đang gửi form phải có `disabled={isSubmitting}` và `aria-busy={isSubmitting}`.
+
+## 4. Chiến lược Mocking Dữ liệu Độc lập tại Wave 1 (Wave 1 Mocking Strategy)
+
+Do `frontend-dev` được triển khai song song với `db-dev` tại **Wave 1** (khi `backend-dev` chưa dựng xong API thực tế), việc gọi API trực tiếp có thể gây lỗi mạng hoặc chặn quá trình phát triển UI:
+- **Biến môi trường kiểm soát Mocking**: Hỗ trợ flag `NEXT_PUBLIC_USE_MOCKS=true` (hoặc tự động fallback sang mock khi chạy dev/test độc lập).
+- **Mock Data Fixture (`src/frontend/src/lib/api/mocks/`)**: Tạo các file mock fixture bám sát 100% JSON mẫu trong `docs/specs/<feature-slug>/plan.md`.
+- **Mẫu Mock Client Wrapper**:
+  ```typescript
+  import { MOCK_ITEMS } from "./mocks/items";
+
+  export async function fetchItems(): Promise<Item[]> {
+    if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+      // Giả lập độ trễ mạng ngắn để kiểm chứng Loading State
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return MOCK_ITEMS;
+    }
+    return apiRequest<Item[]>("/api/v1/items");
+  }
+  ```
+- **Lợi ích**: Đảm bảo `frontend-dev` có thể hoàn thiện và tự tin kiểm thử trực quan cả 4 trạng thái giao diện (`Loading`, `Error`, `Empty`, `Success`) ngay tại Wave 1 mà hoàn toàn không phụ thuộc vào tiến độ của backend.
+
