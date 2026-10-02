@@ -51,12 +51,23 @@ Toàn bộ mã nguồn thực thi được tổ chức thống nhất trong thư
   - PostgreSQL & Supabase, SQLAlchemy 2.0 (`AsyncSession`, `Mapped`, `mapped_column`, `asyncpg`), Alembic.
   - File `src/db/models/__init__.py` tích hợp sẵn auto-discovery toàn bộ models cho Alembic.
   - Hỗ trợ cross-DB tuyệt đối giữa SQLite in-memory test và PostgreSQL/Supabase runtime (UUID khóa chính sinh bằng Python `default=uuid.uuid4` hoặc kế thừa `UUIDPrimaryKeyMixin`, mảng dữ liệu dùng `JSON` chuẩn hoặc variant).
+  - **Kiểm thử Kiểu Dữ Liệu PostgreSQL Nâng Cao (Cross-DB Test Edge Cases)**:
+    - Khi sử dụng các tính năng độc quyền của PostgreSQL (`pgvector`, `tsvector` Full-Text Search, PostgreSQL native `ENUM`, `ARRAY` contains/overlap, `JSONB` path operators, Row Level Security - RLS):
+      - Cung cấp kiểu tương thích qua `.with_variant(...)` nếu khả thi.
+      - Đánh dấu test case bằng `@pytest.mark.postgres_only` trong `src/backend/tests/`.
+      - Môi trường SQLite in-memory tự động skip an toàn các test `postgres_only` với lý do rõ ràng mà không làm vỡ test suite tổng thể.
+      - Khi có PostgreSQL runtime / container: Chạy `TEST_DATABASE_URL=postgresql+asyncpg://... PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` để kiểm thử trực tiếp trên PostgreSQL engine.
   - **Quy chuẩn Supabase (Pooler vs Session)**:
     - `DATABASE_URL`: Dùng cho ứng dụng FastAPI runtime kết nối qua Supavisor Transaction Pooler (`port 6543`, `ssl=require`, `prepared_statement_cache_size=0`).
     - `DIRECT_DATABASE_URL`: BẮT BUỘC dùng cho Alembic DDL migrations kết nối qua Session Mode hoặc Direct (`port 5432`, `ssl=require`) do Transaction Pooler không hỗ trợ prepared statements và session-level locks khi thực thi migration DDL.
   - Thư mục `src/db/seeds/` cung cấp kịch bản seed dữ liệu mẫu qua `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
-- **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), Linter `ruff` (.venv/bin/ruff), Test runner `pytest` (luôn dùng `.venv/bin/pytest`) + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ cấu hình `pythonpath = ["src"]`.
-- **Frontend (`src/frontend/`)**: Next.js 15 (App Router), React 19, TypeScript (Strict mode), Tailwind CSS. Hỗ trợ cơ chế **Client Cache Invalidation** trong `src/frontend/src/lib/api/client.ts` (`cache: 'no-store'`, `clearClientApiCache()`) để triệt tiêu stale cache khi chuyển từ Mock sang Live API.
+- **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), Linter `ruff` (.venv/bin/ruff), Test runner `pytest` (luôn dùng `.venv/bin/pytest`) + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ cấu hình `pythonpath = ["src"]`. Expose endpoints `/health` và `/api/v1/health` kèm metadata chẩn đoán, cấu hình `CORS_ORIGINS` hỗ trợ cả port 3000 và 3001.
+- **Frontend (`src/frontend/`)**: Next.js 15 (App Router), React 19, TypeScript (Strict mode), Tailwind CSS.
+  - **Tự động hóa Dọn dẹp Cache & Cổng Mạng (Port & Network Alignment)**:
+    - Typed API Client trong `src/frontend/src/lib/api/client.ts` tự động phân giải URL qua `getApiBaseUrl()` (hỗ trợ cả SSR `INTERNAL_API_URL` và Browser `NEXT_PUBLIC_API_URL`).
+    - Hàm `clearClientApiCache()` tự động dọn sạch `localStorage`, `sessionStorage` và Browser `CacheStorage` khi chuyển từ Mock sang Live API.
+    - Header yêu cầu luôn kèm `Cache-Control: 'no-cache, no-store, must-revalidate'`, `Pragma: 'no-cache'`, `Expires: '0'`, và tự động gắn query param cache-buster `_t=Date.now()` khi `invalidateCache: true`.
+    - Cung cấp hàm `checkApiHealth()` và script `scripts/verify_network.py` để tự động kiểm tra thông mạng giữa Frontend (port 3000/3001), Backend (port 8000) và PostgreSQL (port 5432).
 - **Hồ sơ Chuyển giao Chuẩn hóa (`docs/specs/<feature-slug>/`)**:
   - `plan.md`: Bản thiết kế kỹ thuật, Ma trận dữ liệu 3 tầng (Data Contract Matrix), OpenAPI Contract, UI Spec, Ma trận truy xuất Acceptance Criteria.
   - `test-report.md`: Chỉ số kiểm thử tự động, kết quả 4 tầng kiểm tra và Phiếu báo lỗi có cấu trúc (Structured Bug Tickets).
@@ -177,20 +188,24 @@ Khi nhận yêu cầu tính năng từ người dùng, Tech Lead áp dụng **Dy
 ### Bước 2: Giai đoạn Development (Quy trình 2-Wave + Wave Handshake Gate)
 1. **Chiến lược Không gian làm việc (`Workspace: "inherit"`)**:
    - Khi gọi `invoke_subagent` cho các Dev Squads, bắt buộc chỉ định `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) có ranh giới thư mục hoàn toàn độc lập, việc kế thừa workspace loại bỏ hoàn toàn nguy cơ xung đột Git, đồng thời giúp Wave 2 và QA nhìn thấy mã nguồn ngay lập tức mà không cần thao tác gộp nhánh (merge branch) thủ công.
-2. **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
+2. **Quản lý Định danh Hội thoại (Squad Conversation Registry)**:
+   - Tech Lead Orchestrator **BẮT BUỘC lưu lại Conversation ID** trả về từ `invoke_subagent` cho từng squad:
+     `SQUAD_REGISTRY = {"db-dev": conv_id_db, "frontend-dev": conv_id_fe, "backend-dev": conv_id_be}`
+   - Registry này được duy trì xuyên suốt toàn bộ vòng đời tính năng để phục vụ điều phối các vòng lặp phản hồi.
+3. **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
    - Gọi đồng thời `db-dev` (`Model: "inherit"`) và `frontend-dev` (`Model: "inherit"`) trong cùng một lệnh `invoke_subagent`.
    - `db-dev` tạo SQLAlchemy Models, Repositories, Migrations (qua `DIRECT_DATABASE_URL` port 5432 nếu dùng Supabase, hoặc `generate_offline_migration.py` nếu không có PostgreSQL) và Seeds trong `src/db/` (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`).
    - `frontend-dev` tạo TypeScript types, Mock fixtures và UI components trong `src/frontend/` (hỗ trợ `isMockMode()` với cờ `NEXT_PUBLIC_USE_MOCKS=true` để phát triển và kiểm chứng UI độc lập).
-3. **Wave Handshake Gate (Kiểm tra chéo trước khi kích hoạt Wave 2)**:
+4. **Wave Handshake Gate (Kiểm tra chéo trước khi kích hoạt Wave 2)**:
    - Khi `db-dev` báo hoàn tất, Tech Lead Orchestrator thực hiện kiểm tra chéo:
      ```bash
      python3 -m py_compile src/db/models/*.py
      .venv/bin/ruff check src/db/
      ```
    - Xác nhận `src/db/models/__init__.py` đã export các models mới.
-   - *Nếu phát hiện lỗi cú pháp hoặc lỗi import*: KHÔNG gọi `backend-dev` mà gửi ngay `[SELF-HEALING ACTION REQUIRED]` cho `db-dev` khắc phục.
-4. **Wave 2 (Triển khai `backend-dev` & Đồng bộ Live API)**:
-   - Sau khi vượt qua Wave Handshake Gate, gọi `backend-dev` (`Model: "inherit"`) trong `invoke_subagent`.
+   - *Nếu phát hiện lỗi cú pháp hoặc lỗi import*: KHÔNG gọi `backend-dev` mà gửi ngay `[SELF-HEALING ACTION REQUIRED]` qua `send_message` tới `SQUAD_REGISTRY["db-dev"]`.
+5. **Wave 2 (Triển khai `backend-dev` & Đồng bộ Live API)**:
+   - Sau khi vượt qua Wave Handshake Gate, gọi `backend-dev` (`Model: "inherit"`) trong `invoke_subagent` và ghi nhận `conv_id_be`.
    - `backend-dev` tạo Pydantic v2 schemas, services nghiệp vụ và API routers trong `src/backend/`, kết nối trực tiếp với models tại `src/db/` qua `PYTHONPATH=src`.
    - **Đồng bộ Mock → Live API & Cache Invalidation**:
      - Chuyển `NEXT_PUBLIC_USE_MOCKS=false` trong `.env`.
@@ -204,9 +219,12 @@ Khi nhận yêu cầu tính năng từ người dùng, Tech Lead áp dụng **Dy
    - `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`
    - `npm --prefix src/frontend run typecheck`
 3. Xuất kết quả vào `docs/specs/<feature-slug>/test-report.md`.
-4. **Vòng lặp Tự sửa lỗi (Self-Healing Bug Fix Loop)**:
+4. **Vòng lặp Tự sửa lỗi (Self-Healing Bug Fix Loop) & Bảo Toàn Ngữ Cảnh (Context Preservation)**:
    - Nếu `overall_status: FAILED`:
-     - Tech Lead trích xuất thông tin lỗi từ Mục 4 của `test-report.md` và gửi tin nhắn qua `send_message` tới conversationId của Dev Squad tương ứng theo **Giao thức Chuẩn [SELF-HEALING ACTION REQUIRED]**:
+     - **Nguyên tắc Bảo toàn Ngữ cảnh**: Tech Lead **BẮT BUỘC sử dụng `send_message`** gửi thông điệp tới Conversation ID của squad tương ứng (`SQUAD_REGISTRY[target_agent]`).
+     - **TUYỆT ĐỐI KHÔNG** gọi lệnh `invoke_subagent` tạo mới agent cho cùng squad trong vòng lặp Self-Healing. Việc tái sử dụng Conversation ID giúp Subagent duy trì 100% ngữ cảnh (working memory, context reasoning, file đã sửa, terminal history), giảm 70% token tiêu hao và sửa lỗi chuẩn xác hơn nhiều lần.
+     - *Ngoại lệ*: Chỉ khi `send_message` trả về lỗi (do agent đã bị terminated/crashed), Tech Lead mới gọi `invoke_subagent` khởi tạo agent mới kèm tóm tắt lịch sử lỗi.
+     - **Giao thức Chuẩn [SELF-HEALING ACTION REQUIRED]**:
        ```text
        [SELF-HEALING ACTION REQUIRED]
        - Feature: <feature-slug>
@@ -232,7 +250,7 @@ Khi nhận yêu cầu tính năng từ người dùng, Tech Lead áp dụng **Dy
        - Summary of Fix: <tóm tắt ngắn gọn giải pháp khắc phục>
        ```
      - **Bảo Vệ Lệch Hợp Đồng (Contract Drift Protection)**:
-       - Nếu `Contract Modified: TRUE`, Tech Lead cập nhật lại `docs/specs/<feature-slug>/plan.md`, nâng `version` (ví dụ `1.1.0`), đồng bộ lại Cross-Layer Data Contract Matrix và gửi thông báo cho squad liên quan.
+       - Nếu `Contract Modified: TRUE`, Tech Lead cập nhật lại `docs/specs/<feature-slug>/plan.md`, nâng `version` (ví dụ `1.1.0`), đồng bộ lại Cross-Layer Data Contract Matrix và gửi thông báo cho squad liên quan qua `send_message`.
      - Tech Lead yêu cầu `qa-tester` chạy lại bài test. Tăng `iteration` thêm 1.
    - **Cơ chế Ngắt Mạch (Circuit Breaker)**: Vòng lặp tối đa **3 lần** (`MAX_ITERATIONS = 3`). Nếu sau 3 lần vẫn `FAILED`, Tech Lead tạm dừng quy trình và xuất báo cáo leo thang cho User.
 
@@ -243,9 +261,10 @@ Khi nhận yêu cầu tính năng từ người dùng, Tech Lead áp dụng **Dy
    - Chạy `git status --short` và `git diff --stat` để đo lường quy mô.
    - Chạy `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock' ':!*.min.*'` để loại bỏ lockfiles, tập trung 100% token budget vào thẩm định kiến trúc, bảo mật OWASP, N+1 query và Data Contract Alignment.
    - Chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
-3. **Vòng lặp Phản hồi Review (Review Feedback Loop)**:
+3. **Vòng lặp Phản hồi Review (Review Feedback Loop) & Bảo Toàn Ngữ Cảnh**:
    - Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`):
-     - Tech Lead gửi tin nhắn qua `send_message` theo **Giao thức Chuẩn [REVIEW-FIX ACTION REQUIRED]**:
+     - Tech Lead **BẮT BUỘC sử dụng `send_message`** gửi yêu cầu sửa đổi trực tiếp tới Conversation ID của squad liên quan (`SQUAD_REGISTRY[target_agent]`), KHÔNG tạo mới subagent.
+     - **Giao thức Chuẩn [REVIEW-FIX ACTION REQUIRED]**:
        ```text
        [REVIEW-FIX ACTION REQUIRED]
        - Feature: <feature-slug>

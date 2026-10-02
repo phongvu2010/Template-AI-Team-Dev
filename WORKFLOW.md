@@ -154,6 +154,10 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 ### Giai đoạn 3: Triển khai Lập trình Đợt kép (2-Wave Execution)
 - **Chiến lược Không gian làm việc (`Workspace: "inherit"`)**:
   - Khi Tech Lead gọi `invoke_subagent` cho các Dev Squads, bắt buộc cấu hình `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) có phạm vi thư mục hoàn toàn tách biệt, việc dùng chung workspace không gây xung đột Git, đồng thời giúp Wave 2 và QA nhìn thấy code mới ngay lập tức mà không cần merge branch.
+- **Quản lý Định danh Hội thoại (Squad Conversation Registry)**:
+  - Tech Lead Orchestrator **BẮT BUỘC lưu lại Conversation ID** của từng squad:
+    `SQUAD_REGISTRY = {"db-dev": conv_id_db, "frontend-dev": conv_id_fe, "backend-dev": conv_id_be}`
+  - Registry này được duy trì để định tuyến thông điệp sửa lỗi qua `send_message`, bảo toàn 100% ngữ cảnh hội thoại.
 - **Quy tắc phân vùng file tuyệt đối (File Ownership Isolation)**:
   - `db-dev`: Chỉ ghi trong `src/db/`.
   - `frontend-dev`: Chỉ ghi trong `src/frontend/`.
@@ -163,6 +167,7 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 - **Nhánh 1A - Database Specialist (`db-dev` tại `src/db/` — `Model: "inherit"`)**:
   - Tạo model trong `src/db/models/<name>.py` (kế thừa `UUIDPrimaryKeyMixin` và `TimestampMixin`).
   - Mảng dữ liệu dùng `JSON` (kèm variant PG nếu cần) để SQLite test không bị lỗi.
+  - Khi dùng tính năng độc quyền PostgreSQL (`pgvector`, `tsvector`, native enum, JSONB path), khai báo rõ trong `plan.md` và dùng `.with_variant(...)` cho SQLite fallback.
   - Viết repository async chống N+1 bằng `selectinload()`.
   - **Quản lý Migration & Supabase**:
     - Khi dùng Supabase: BẮT BUỘC dùng `DIRECT_DATABASE_URL` (Session Mode port 5432, `ssl=require`) để chạy `alembic upgrade head`. Không dùng Transaction Pooler port 6543 vì không hỗ trợ prepared statements & session locks cho migration DDL.
@@ -173,6 +178,7 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
   - Tạo TypeScript types tại `src/frontend/src/types/` khớp 100% với Data Contract Matrix (`snake_case`, 0 `any`).
   - Tạo mock fixtures tại `src/frontend/src/lib/api/mocks/` hỗ trợ `isMockMode()` và cờ `NEXT_PUBLIC_USE_MOCKS=true`.
   - Xây dựng UI components & pages Next.js Server Component-First xử lý trọn vẹn 4 trạng thái: Loading (loading.tsx), Error (error.tsx), Empty, Success.
+  - Tự động hóa phân giải API URL: `getApiBaseUrl()` (hỗ trợ SSR `INTERNAL_API_URL` và Client `NEXT_PUBLIC_API_URL`).
   - Kiểm tra kiểu: `npm --prefix src/frontend run typecheck`.
 
 #### Wave Handshake Gate (Chốt kiểm tra chéo giữa Wave 1 & Wave 2):
@@ -182,23 +188,28 @@ python3 -m py_compile src/db/models/*.py
 .venv/bin/ruff check src/db/
 ```
 - Xác nhận `src/db/models/__init__.py` đã export các models mới.
-- *Nếu phát hiện lỗi cú pháp hoặc import*: DỪNG LẠI, KHÔNG khởi chạy `backend-dev` mà gửi ngay `[SELF-HEALING ACTION REQUIRED]` cho `db-dev` khắc phục. Chỉ khi models sạch sẽ mới chuyển giao cho Wave 2.
+- *Nếu phát hiện lỗi cú pháp hoặc import*: DỪNG LẠI, KHÔNG khởi chạy `backend-dev` mà gửi ngay `[SELF-HEALING ACTION REQUIRED]` qua `send_message` tới `SQUAD_REGISTRY["db-dev"]`. Chỉ khi models sạch sẽ mới chuyển giao cho Wave 2.
 
 #### Đợt 2 (Wave 2 - Kết nối Backend & Đồng bộ Live API):
 - **Backend Specialist (`backend-dev` tại `src/backend/` — `Model: "inherit"`)**:
-  - Kích hoạt ngay sau khi vượt qua Wave Handshake Gate.
+  - Kích hoạt ngay sau khi vượt qua Wave Handshake Gate, Tech Lead lưu lại `conv_id_be`.
   - Viết Pydantic v2 schemas tại `src/backend/app/schemas/` (`ConfigDict(from_attributes=True)`, giới hạn `max_length`, `ge`/`le`).
   - Viết Services xử lý business logic và transaction tại `src/backend/app/services/`.
-  - Viết API routers tại `src/backend/app/api/v1/endpoints/` kết nối models trực tiếp từ `src/db/` thông qua `PYTHONPATH=src`.
+  - Viết API routers tại `src/backend/app/api/v1/endpoints/` kết nối models trực tiếp từ `src/db/` thông qua `PYTHONPATH=src`. Expose cả `/health` và `/api/v1/health`.
   - Cắm router vào `api_router` tập trung tại `src/backend/app/api/v1/router.py`.
   - **Đồng bộ Mock → Live API & Cache Invalidation**:
     - Chuyển `NEXT_PUBLIC_USE_MOCKS=false` trong `.env`.
-    - Typed API Client trong `src/frontend/src/lib/api/client.ts` tự động áp dụng `cache: 'no-store'`, header `Cache-Control: 'no-cache'`, và gọi `clearClientApiCache()` để xóa sạch stale cache.
+    - Typed API Client trong `src/frontend/src/lib/api/client.ts` tự động áp dụng `cache: 'no-store'`, header `Cache-Control: 'no-cache'`, và gọi `clearClientApiCache()` để xóa sạch stale cache cả ở Storage và Browser CacheStorage.
+    - Chạy script kiểm tra mạng nhanh: `.venv/bin/python scripts/verify_network.py`.
 
 ---
 
 ### Giai đoạn 4: Kiểm thử Tự động & Vòng lặp Sửa lỗi (`qa-tester`)
 - `qa-tester` đối chiếu `plan.md` và viết test tự động tại `src/backend/tests/test_<feature>.py`.
+- **Quy Chuẩn Kiểm Thử Kiểu Dữ Liệu PostgreSQL Nâng Cao (Cross-DB Testing)**:
+  - Khi test các tính năng đặc thù PostgreSQL (`pgvector`, `tsvector`, native enum, array operators), gắn decorator `@pytest.mark.postgres_only`.
+  - SQLite in-memory test mặc định sẽ tự động skip an toàn các test này mà không báo `FAILED`.
+  - Khi có PostgreSQL: `TEST_DATABASE_URL=postgresql+asyncpg://... PYTHONPATH=src .venv/bin/pytest src/backend/tests -v`.
 - Thực thi chuỗi lệnh kiểm tra:
   ```bash
   # 1. Linter & Code Standards
@@ -211,9 +222,9 @@ python3 -m py_compile src/db/models/*.py
   npm --prefix src/frontend run typecheck
   ```
 - Xuất báo cáo tại `docs/specs/<feature-slug>/test-report.md` (kèm Chỉ số Metrics và Structured Bug Tickets).
-- **Vòng lặp Self-Healing (Tự sửa lỗi)**:
+- **Vòng lặp Self-Healing (Tự sửa lỗi) & Bảo Toàn Ngữ Cảnh (Context Preservation)**:
   - Nếu `overall_status: FAILED`:
-    - Tech Lead gửi tin nhắn `send_message` theo mẫu `[SELF-HEALING ACTION REQUIRED]` cho Dev Squad tương ứng.
+    - **Bảo toàn Ngữ cảnh**: Tech Lead **BẮT BUỘC dùng `send_message`** gửi yêu cầu sửa lỗi tới Conversation ID của squad (`SQUAD_REGISTRY[target_agent]`). TUYỆT ĐỐI KHÔNG gọi `invoke_subagent` mới.
     - Dev Squad sửa lỗi trong thư mục phân quyền, chạy smoke test và gửi phản hồi `[FIX-COMPLETED]`.
     - `qa-tester` chạy lại bài test. Bộ đếm `iteration` tăng thêm 1.
     - **Cơ chế Ngắt Mạch (Circuit Breaker)**: Tối đa **3 vòng lặp**. Nếu quá 3 lần vẫn lỗi, kích hoạt Giao thức Báo cáo Leo thang cho User.

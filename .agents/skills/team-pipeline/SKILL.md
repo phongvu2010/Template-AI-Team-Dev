@@ -64,6 +64,10 @@ Gọi `invoke_subagent`:
 ### Bước 2: Khởi chạy Đội ngũ Dev theo Quy trình 2-Wave + Wave Handshake Gate
 - **Chiến lược Workspace Mode (`Workspace: "inherit"`)**:
   - Khi gọi `invoke_subagent` cho các Dev Squads, bắt buộc đặt `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) thao tác trên các thư mục độc lập tuyệt đối, việc kế thừa workspace loại bỏ xung đột Git và giúp Wave 2 cùng QA nhìn thấy code ngay lập tức mà không cần merge branch.
+- **Quản lý Định danh Hội thoại (Squad Conversation Registry)**:
+  - Tech Lead **BẮT BUỘC lưu lại Conversation ID** của từng Dev Squad:
+    `SQUAD_REGISTRY = {"db-dev": conv_id_db, "frontend-dev": conv_id_fe, "backend-dev": conv_id_be}`
+  - Registry này dùng để định tuyến toàn bộ thông điệp sửa lỗi trong vòng đời tính năng qua `send_message`.
 - **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
   - Gọi đồng thời `db-dev` (`Model: "inherit"`) và `frontend-dev` (`Model: "inherit"`) trong cùng lệnh `invoke_subagent`.
   - `db-dev` xây dựng models (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`), repositories async (dùng `selectinload`), migrations (dùng `DIRECT_DATABASE_URL` port 5432 nếu có Supabase, hoặc `generate_offline_migration.py` nếu không có PostgreSQL) và seeds tại `src/db/`.
@@ -74,9 +78,9 @@ Gọi `invoke_subagent`:
     python3 -m py_compile src/db/models/*.py
     .venv/bin/ruff check src/db/
     ```
-  - Xác nhận models compile sạch sẽ và được export đầy đủ tại `src/db/models/__init__.py`. Nếu có lỗi cú pháp, gửi ngay `[SELF-HEALING ACTION REQUIRED]` cho `db-dev`.
+  - Xác nhận models compile sạch sẽ và được export đầy đủ tại `src/db/models/__init__.py`. Nếu có lỗi cú pháp, gửi ngay `[SELF-HEALING ACTION REQUIRED]` qua `send_message` tới `SQUAD_REGISTRY["db-dev"]`.
 - **Wave 2 (Triển khai `backend-dev` & Đồng bộ Live API)**:
-  - Khi Wave Handshake Gate đạt yêu cầu, gọi `backend-dev` (`Model: "inherit"`) trong `invoke_subagent`.
+  - Khi Wave Handshake Gate đạt yêu cầu, gọi `backend-dev` (`Model: "inherit"`) trong `invoke_subagent` và ghi nhận `conv_id_be`.
   - `backend-dev` tạo Pydantic v2 schemas (`ConfigDict(from_attributes=True)`), services nghiệp vụ và API routers tại `src/backend/`, kết nối trực tiếp với models từ `src/db/` qua `PYTHONPATH=src`.
   - **Đồng bộ Mock → Live API & Cache Invalidation**: Sau khi Backend hoàn thành các endpoints, chuyển `NEXT_PUBLIC_USE_MOCKS=false`. Typed API client tự động áp dụng `cache: 'no-store'`, header `Cache-Control: 'no-cache'`, và gọi `clearClientApiCache()` để xóa sạch cache mock cũ.
 
@@ -86,11 +90,15 @@ Gọi `invoke_subagent` với `TypeName: "qa-tester"`, `Model: "flash"`:
 - `qa-tester` chạy chuỗi kiểm tra:
   1. `.venv/bin/ruff check src/`
   2. `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`
+     *(Mặc định chạy SQLite in-memory cô lập. Các bài test có tính năng đặc thù PostgreSQL được gắn `@pytest.mark.postgres_only` sẽ tự động skip an toàn khi chạy trên SQLite)*.
   3. `npm --prefix src/frontend run typecheck`
 - Xuất báo cáo theo mẫu `.agents/skills/team-pipeline/resources/test-report-template.md` tại `docs/specs/<feature-slug>/test-report.md`.
-- **Vòng lặp Self-Healing (Tự sửa lỗi)**:
+- **Vòng lặp Self-Healing (Tự sửa lỗi) & Bảo Toàn Ngữ Cảnh (Context Preservation)**:
   - Nếu `overall_status: FAILED`:
-    - Tech Lead gửi tin nhắn `send_message` tới conversationId của Dev Squad chịu trách nhiệm theo mẫu:
+    - **Bảo toàn Ngữ cảnh**: Tech Lead **BẮT BUỘC sử dụng `send_message`** gửi yêu cầu sửa lỗi tới Conversation ID của squad liên quan (`SQUAD_REGISTRY[target_agent]`).
+    - **TUYỆT ĐỐI KHÔNG** gọi `invoke_subagent` tạo mới agent cho cùng squad trong vòng lặp Self-Healing. Tái sử dụng Conversation ID giúp Subagent duy trì 100% ngữ cảnh (working memory, code context, terminal logs), giảm 70% token tiêu hao và sửa lỗi chính xác gấp 3 lần.
+    - *Ngoại lệ*: Chỉ khi `send_message` gặp lỗi (agent đã terminated/crashed) mới gọi `invoke_subagent` khởi tạo agent mới kèm tóm tắt ngữ cảnh.
+    - Mẫu thông điệp điều phối:
       ```text
       [SELF-HEALING ACTION REQUIRED]
       - Feature: <feature-slug>
@@ -115,7 +123,7 @@ Gọi `invoke_subagent` với `TypeName: "qa-tester"`, `Model: "flash"`:
       - Resolved Bug IDs: <BUG-01, ...>
       - Summary of Fix: <tóm tắt ngắn gọn giải pháp>
       ```
-    - **Contract Drift Protection**: Nếu `Contract Modified: TRUE`, Tech Lead cập nhật `docs/specs/<feature-slug>/plan.md`, nâng `version` (e.g. `1.1.0`), đồng bộ lại Cross-Layer Data Contract Matrix và gửi thông báo cho squad liên quan.
+    - **Contract Drift Protection**: Nếu `Contract Modified: TRUE`, Tech Lead cập nhật `docs/specs/<feature-slug>/plan.md`, nâng `version` (e.g. `1.1.0`), đồng bộ lại Cross-Layer Data Contract Matrix và gửi thông báo cho squad liên quan qua `send_message`.
     - Tech Lead yêu cầu `qa-tester` chạy lại bài test. Tăng `iteration` thêm 1.
     - **Cơ chế Ngắt Mạch (Circuit Breaker)**: Tối đa **3 lần lặp**. Nếu quá 3 lần vẫn thất bại, tạm dừng và báo cáo sự cố cho User.
 
@@ -128,9 +136,9 @@ Khi `test-report.md` đạt `PASSED 100%`:
   2. `git diff --stat` đo lường quy mô thay đổi.
   3. `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock' ':!*.min.*'` loại trừ lockfiles/minified files, dồn 100% token budget vào logic nghiệp vụ và 5 tiêu chí Quality Gate.
   4. Chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
-- **Vòng lặp Phản hồi Review (Review Feedback Loop)**:
+- **Vòng lặp Phản hồi Review (Review Feedback Loop) & Bảo Toàn Ngữ Cảnh**:
   - Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`):
-    - Tech Lead gửi tin nhắn `send_message` theo mẫu:
+    - Tech Lead **BẮT BUỘC sử dụng `send_message`** gửi thông điệp tới `SQUAD_REGISTRY[target_agent]`, KHÔNG gọi mới `invoke_subagent`.
       ```text
       [REVIEW-FIX ACTION REQUIRED]
       - Feature: <feature-slug>

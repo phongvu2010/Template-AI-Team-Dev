@@ -1,10 +1,24 @@
 /**
  * Typed HTTP Client for communicating with the FastAPI Backend (`frontend/src/lib/api/client.ts`).
  * Supports seamless toggling between Wave 1 Mock Fixtures and Wave 2 Live Backend,
- * with Next.js 15 / React 19 Client Cache Invalidation safeguards.
+ * with Next.js 15 / React 19 Client Cache Invalidation safeguards and automated port/network alignment.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/**
+ * Dynamically resolves the API Base URL:
+ * - Server-side (SSR / Server Actions): prioritizes INTERNAL_API_URL (e.g. Docker bridge or localhost:8000).
+ * - Client-side (Browser): uses NEXT_PUBLIC_API_URL or defaults to http://localhost:8000.
+ */
+export function getApiBaseUrl(): string {
+  if (typeof window === "undefined") {
+    return (
+      process.env.INTERNAL_API_URL ??
+      process.env.NEXT_PUBLIC_API_URL ??
+      "http://127.0.0.1:8000"
+    );
+  }
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+}
 
 /**
  * Returns true if mock mode is explicitly enabled via NEXT_PUBLIC_USE_MOCKS=true.
@@ -31,23 +45,78 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 /**
- * Utility to clear any persisted client-side cache or storage when switching modes
+ * Diagnostics & Network alignment interface
  */
-export function clearClientApiCache(): void {
+export interface HealthStatus {
+  ok: boolean;
+  status: number;
+  url: string;
+  data?: unknown;
+  error?: string;
+}
+
+/**
+ * Utility to clear any persisted client-side cache, localStorage, sessionStorage,
+ * and browser CacheStorage when switching between Mock and Live API modes.
+ */
+export async function clearClientApiCache(): Promise<void> {
   if (typeof window !== "undefined") {
     try {
-      // Clear session/local storage keys associated with API responses
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key && (key.startsWith("api_") || key.startsWith("cache_"))) {
-          keysToRemove.push(key);
+      // 1. Clear session and local storage keys associated with API responses
+      const clearStorage = (storage: Storage) => {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key && (key.startsWith("api_") || key.startsWith("cache_") || key.startsWith("mock_"))) {
+            keysToRemove.push(key);
+          }
         }
+        keysToRemove.forEach((k) => storage.removeItem(k));
+      };
+
+      clearStorage(sessionStorage);
+      clearStorage(localStorage);
+
+      // 2. Clear Browser CacheStorage if supported
+      if ("caches" in window) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((name) => name.includes("api") || name.includes("fetch"))
+            .map((name) => window.caches.delete(name)),
+        );
       }
-      keysToRemove.forEach((k) => sessionStorage.removeItem(k));
     } catch {
-      // Ignore storage errors in restricted iframe/browser environments
+      // Ignore storage errors in restricted iframe/sandbox environments
     }
+  }
+}
+
+/**
+ * Check backend API health and connectivity on configured port.
+ */
+export async function checkApiHealth(): Promise<HealthStatus> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/health`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, status: res.status, url: baseUrl, data };
+    }
+    return { ok: false, status: res.status, url: baseUrl, error: `HTTP ${res.status}` };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      url: baseUrl,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -77,9 +146,17 @@ export async function apiRequest<T>(
   if (invalidateCache || !isMockMode()) {
     headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
     headers["Pragma"] = "no-cache";
+    headers["Expires"] = "0";
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  // If explicit cache bust requested, append timestamp query parameter
+  let targetUrl = `${getApiBaseUrl()}${endpoint}`;
+  if (invalidateCache) {
+    const separator = targetUrl.includes("?") ? "&" : "?";
+    targetUrl = `${targetUrl}${separator}_t=${Date.now()}`;
+  }
+
+  const response = await fetch(targetUrl, {
     ...fetchOptions,
     cache: cacheStrategy,
     headers,

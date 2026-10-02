@@ -33,6 +33,8 @@ addopts = "-v --tb=short"
 markers = [
     "asyncio: mark test as asyncio coroutine",
     "anyio: mark test to run with anyio",
+    "postgres_only: mark test as requiring a live PostgreSQL instance (e.g. for pgvector, tsvector, array operators)",
+    "sqlite_compatible: mark test as compatible with both SQLite in-memory and PostgreSQL",
 ]
 
 [tool.ruff]

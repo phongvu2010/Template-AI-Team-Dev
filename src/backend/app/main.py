@@ -25,8 +25,14 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/health", tags=["system"])
+    @app.get(f"{settings.API_V1_STR}/health", tags=["system"])
     async def health_check() -> dict[str, str]:
-        return {"status": "ok"}
+        return {
+            "status": "ok",
+            "project": settings.PROJECT_NAME,
+            "version": settings.VERSION,
+            "environment": settings.ENVIRONMENT,
+        }
 
     # Central API v1 router
     app.include_router(api_router, prefix=settings.API_V1_STR)

@@ -1,9 +1,13 @@
 """Pytest configuration and async test fixtures.
 
-Provides SQLite async in-memory fallback (:memory:) so tests can run
-reliably in isolated sandbox environments without requiring a running PostgreSQL server.
+Provides dual-mode testing:
+- Default: SQLite async in-memory fallback (:memory:) for isolated, rapid testing.
+- PostgreSQL runtime: Supports live PostgreSQL / Supabase testing via TEST_DATABASE_URL.
+- Cross-DB Edge Cases: Tests marked with @pytest.mark.postgres_only are automatically
+  skipped when running against SQLite in-memory, preventing false failures on PG-specific types.
 """
 
+import os
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -20,7 +24,26 @@ from backend.app.main import app
 from db.base import Base
 from db.session import get_db_session
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+
+
+def is_postgres_test_db() -> bool:
+    """Return True if TEST_DATABASE_URL points to a PostgreSQL database."""
+    return "postgresql" in TEST_DATABASE_URL or "postgres" in TEST_DATABASE_URL
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip tests marked with `postgres_only` when executing against SQLite in-memory."""
+    if not is_postgres_test_db():
+        skip_pg = pytest.mark.skip(
+            reason=(
+                "Requires live PostgreSQL instance (e.g. pgvector, JSONB path, native enum). "
+                "Set TEST_DATABASE_URL=postgresql+asyncpg://... to execute. Skipped on SQLite."
+            )
+        )
+        for item in items:
+            if "postgres_only" in item.keywords:
+                item.add_marker(skip_pg)
 
 
 _test_engine: AsyncEngine | None = None
@@ -28,19 +51,38 @@ _testing_session_local: async_sessionmaker[AsyncSession] | None = None
 
 
 def get_test_engine() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
-    """Lazily initialize SQLite async engine with StaticPool."""
+    """Lazily initialize the async engine according to TEST_DATABASE_URL dialect."""
     global _test_engine, _testing_session_local
     if _test_engine is None:
-        try:
-            import aiosqlite  # noqa: F401
-        except ImportError:
-            pytest.skip("aiosqlite is not installed. Run 'pip install aiosqlite' to enable async SQLite in-memory tests.")
+        if is_postgres_test_db():
+            connect_args: dict[str, int] = {}
+            if (
+                ":6543" in TEST_DATABASE_URL
+                or "pooler.supabase.com" in TEST_DATABASE_URL
+                or os.getenv("DB_DISABLE_STATEMENT_CACHE", "false").lower() == "true"
+            ):
+                connect_args["prepared_statement_cache_size"] = 0
+                connect_args["statement_cache_size"] = 0
 
-        _test_engine = create_async_engine(
-            TEST_DATABASE_URL,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
+            _test_engine = create_async_engine(
+                TEST_DATABASE_URL,
+                pool_pre_ping=True,
+                connect_args=connect_args,
+            )
+        else:
+            try:
+                import aiosqlite  # noqa: F401
+            except ImportError:
+                pytest.skip(
+                    "aiosqlite is not installed. Run 'pip install aiosqlite' to enable async SQLite in-memory tests."
+                )
+
+            _test_engine = create_async_engine(
+                TEST_DATABASE_URL,
+                connect_args={"check_same_thread": False},
+                poolclass=StaticPool,
+            )
+
         _testing_session_local = async_sessionmaker(
             bind=_test_engine,
             class_=AsyncSession,
@@ -49,6 +91,12 @@ def get_test_engine() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
         )
     assert _testing_session_local is not None
     return _test_engine, _testing_session_local
+
+
+@pytest.fixture(scope="session")
+def db_dialect() -> str:
+    """Return current test database dialect: 'postgresql' or 'sqlite'."""
+    return "postgresql" if is_postgres_test_db() else "sqlite"
 
 
 @pytest.fixture(scope="session", autouse=True)

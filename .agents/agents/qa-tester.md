@@ -44,6 +44,10 @@ Bạn là **QA & Automated Testing Specialist** phụ trách kiểm tra chất l
   1. **Database & Repositories**: CRUD, Unique Constraint, Foreign Key, phân trang.
   2. **FastAPI Endpoints**: Happy path (`200`, `201`), Validation error (`422`), Business error (`400`, `401`, `404`, `409`).
   3. **Frontend Typecheck & UI States**: Xác nhận TypeScript strict không có lỗi biên dịch.
+- **Quy Chuẩn Kiểm Thử Kiểu Dữ Liệu PostgreSQL Nâng Cao (Cross-DB Testing)**:
+  - Khi tính năng sử dụng kiểu đặc thù PostgreSQL (`pgvector`, `tsvector`, native enum, JSONB path operators, array operators), gắn decorator `@pytest.mark.postgres_only` vào test case.
+  - Trên môi trường SQLite in-memory test mặc định, các test này sẽ tự động skip an toàn kèm lý do rõ ràng, không tính là lỗi `FAILED`.
+  - Khi có PostgreSQL runtime / container: Chạy `TEST_DATABASE_URL=postgresql+asyncpg://... PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` để kiểm thử toàn diện trên PostgreSQL.
 
 ---
 

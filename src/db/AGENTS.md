@@ -27,6 +27,12 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
   - **UUID Khóa chính**: Sử dụng `from sqlalchemy import Uuid` kèm `default=uuid.uuid4` (hoặc kế thừa `UUIDPrimaryKeyMixin` từ `src/db/base.py`). Tuyệt đối không dùng `server_default=text("gen_random_uuid()")` hoặc kiểu dialect `UUID` trần.
   - **Mảng dữ liệu**: SQLite không hỗ trợ `ARRAY`. Dùng `from sqlalchemy import JSON` với `default=list` cho các mảng chuỗi (`list[str]`) hoặc variant `JSON().with_variant(ARRAY(String), "postgresql")`.
   - **JSON/JSONB**: Dùng `JSON` chuẩn hoặc variant với `JSONB`.
+  - **Kiểu Dữ Liệu PostgreSQL Nâng Cao (Cross-DB Edge Cases)**:
+    - Khi BẮT BUỘC dùng tính năng độc quyền PostgreSQL (`pgvector` Vector, `TSVECTOR` Full-Text Search, PostgreSQL native `ENUM`, `ARRAY` contains/overlap operators, `JSONB` path operators, Row Level Security - RLS):
+      1. Bắt buộc khai báo rõ trong `docs/specs/<feature-slug>/plan.md`.
+      2. Sử dụng `.with_variant(...)` nếu có thể để cung cấp kiểu tương thích fallback cho SQLite.
+      3. Yêu cầu `qa-tester` gắn decorator `@pytest.mark.postgres_only` vào các test case kiểm tra tính năng này để SQLite test suite tự động skip an toàn khi chạy offline sandbox.
+      4. Hỗ trợ chạy test trực tiếp trên PostgreSQL engine qua `TEST_DATABASE_URL=postgresql+asyncpg://...`.
 - **Chống lỗi N+1**: Toàn bộ quan hệ nạp trong `AsyncSession` phải sử dụng `selectinload()` hoặc `joinedload()`.
 
 ---
