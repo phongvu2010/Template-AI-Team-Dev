@@ -24,6 +24,8 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
    - Đọc kỹ `docs/specs/<feature-slug>/plan.md` (phần Data Contract).
    - Tham khảo skill `db-sqlalchemy-alembic` (`.agents/skills/db-sqlalchemy-alembic/SKILL.md`).
 2. **Triển khai SQLAlchemy 2.0 Models (`src/db/models/`)**:
+   - Định nghĩa model trong module tương ứng tại `src/db/models/<module>.py`.
+   - File `src/db/models/__init__.py` đã có cơ chế tự động nạp (auto-discovery) toàn bộ models cho Alembic autogenerate, không lo thiếu metadata bảng.
    - Sử dụng cú pháp kiểu mới: `Mapped[type]` và `mapped_column(...)`. Tuyệt đối không dùng `Column()` kiểu cũ của SQLAlchemy 1.x.
    - Luôn kế thừa từ `TimestampMixin` có `created_at` và `updated_at` có timezone (`DateTime(timezone=True)`, `server_default=func.now()`).
    - Đặt tên rõ ràng cho các `ForeignKey`, `UniqueConstraint`, `CheckConstraint` và `Index`.
@@ -32,5 +34,5 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
 4. **Quản lý Migration & Seed (`src/db/migrations/`)**:
    - Tạo hoặc cập nhật script Alembic migration có đủ hàm `upgrade()` và `downgrade()` an toàn, có thể rollback.
 5. **Kiểm tra & Bàn giao**:
-   - Kiểm tra cú pháp Python (`python3 -m py_compile src/db/...`) cho toàn bộ các file vừa viết.
+   - Kiểm tra cú pháp Python và linter: `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/...`.
    - Báo cáo lại cho Orchestrator danh sách file, bảng, model và hàm truy vấn đã hoàn thiện để kích hoạt Wave 2 (`backend-dev`).

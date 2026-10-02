@@ -5,6 +5,7 @@ reliably in isolated sandbox environments without requiring a running PostgreSQL
 """
 
 from collections.abc import AsyncGenerator
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -17,7 +18,6 @@ from sqlalchemy.pool import StaticPool
 
 from backend.app.main import app
 from db.base import Base
-from db.session import get_db_session
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -75,7 +75,7 @@ async def async_client(
     request: pytest.FixtureRequest,
 ) -> AsyncGenerator[AsyncClient, None]:
     """HTTP async test client configured with FastAPI app.
-    
+
     If the test or another fixture uses async_db_session, get_db_session will be overridden.
     """
     transport = ASGITransport(app=app)

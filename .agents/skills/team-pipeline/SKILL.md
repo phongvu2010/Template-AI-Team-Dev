@@ -18,7 +18,7 @@ Mọi tính năng đều được định danh bằng một `<feature-slug>` (d�
 | **2A. Wave 1 (DB)** | `db-dev` | `plan.md` (Data Contract) | Code trong `src/db/` (Models, Migrations, Repositories) |
 | **2B. Wave 1 (Frontend)** | `frontend-dev` | `plan.md` (API Contract + UI Spec) | Code trong `src/frontend/` (Types, API Client, Pages/Components) |
 | **2C. Wave 2 (Backend)** | `backend-dev` | `plan.md` (API Contract) + `src/db/` | Code trong `src/backend/` (Schemas, Services, Routers kết nối `src/db/`) |
-| **3. Testing** | `qa-tester` | `plan.md` + Code (`src/db/`, `src/backend/`, `src/frontend/`) | Test suites (`PYTHONPATH=src`) + `docs/specs/<feature-slug>/test-report.md` ([Mẫu](./resources/test-report-template.md)) |
+| **3. Testing** | `qa-tester` | `plan.md` + Code (`src/db/`, `src/backend/`, `src/frontend/`) | Ruff check + Test suites (`.venv/bin/pytest`) + `docs/specs/<feature-slug>/test-report.md` ([Mẫu](./resources/test-report-template.md)) |
 | **4. Review** | `code-reviewer` | `plan.md` + `test-report.md` + `git diff` | `docs/specs/<feature-slug>/review-report.md` ([Mẫu](./resources/review-report-template.md)) |
 | **5. Packaging** | `tech-lead` | `review-report.md` (`APPROVED`) + Git status | Conventional Git commit + Handoff report cho User |
 
@@ -44,7 +44,7 @@ Sau khi `plan.md` hoàn tất:
 
 ### Bước 3: Khởi chạy `qa-tester` & Vòng lặp Tự sửa lỗi (Self-Healing Loop)
 Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
-- Yêu cầu `qa-tester` đọc `plan.md`, viết và chạy test thực tế với `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback) và `npm --prefix src/frontend run typecheck`.
+- Yêu cầu `qa-tester` đọc `plan.md`, thực thi kiểm tra linter với `.venv/bin/ruff check src/`, viết và chạy test thực tế với `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback) và `npm --prefix src/frontend run typecheck`. Luôn chỉ định rõ đường dẫn thực thi `.venv/bin/pytest` để đảm bảo nạp đúng virtualenv.
 - Xuất báo cáo theo mẫu `.agents/skills/team-pipeline/resources/test-report-template.md` tại `docs/specs/<feature-slug>/test-report.md`.
 - Nếu `Status: FAILED`:
   - Xác định lỗi nằm ở `src/db/`, `src/backend/` hay `src/frontend/`.

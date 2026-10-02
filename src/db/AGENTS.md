@@ -15,3 +15,6 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
    - Mỗi thay đổi schema phải đi kèm migration có cả `upgrade()` và `downgrade()` có thể hoàn tác an toàn.
 5. **Tuân thủ Hợp đồng**:
    - Tên bảng, tên cột và kiểu dữ liệu phải khớp chính xác với mục **Data Contract** trong `docs/specs/<feature-slug>/plan.md`.
+6. **Tổ chức Models & Auto-Discovery (`src/db/models/`)**:
+   - Mỗi model được định nghĩa trong một module riêng biệt (ví dụ `src/db/models/item.py`).
+   - File `src/db/models/__init__.py` đã cài đặt cơ chế tự động tìm và nạp (auto-discovery) toàn bộ các module con để `Base.metadata` luôn nhận diện đầy đủ các bảng khi chạy `alembic revision --autogenerate`. Khuyến khích xuất khẩu rõ ràng trong `__all__` nếu cần.

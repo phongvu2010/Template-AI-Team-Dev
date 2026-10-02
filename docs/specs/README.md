@@ -5,6 +5,6 @@ Mỗi tính năng được phát triển bởi **Multi-Agent Dev Team** sẽ có
 1. **`plan.md`** *(Do `planner` tạo)*:
    - Bản thiết kế kỹ thuật tổng thể: Data Contract (`src/db/`), API Contract (`src/backend/` & `src/frontend/`), UI Architecture (`src/frontend/`) và Acceptance Criteria (`qa-tester`).
 2. **`test-report.md`** *(Do `qa-tester` tạo)*:
-   - Kết quả chạy kiểm thử tự động (`PYTHONPATH=src pytest`, `tsc`), độ phủ kịch bản và chẩn đoán lỗi (nếu `FAILED`).
+   - Kết quả chạy kiểm tra linter (`.venv/bin/ruff check src/`), kiểm thử tự động (`PYTHONPATH=src .venv/bin/pytest src/backend/tests -v`, `npm run typecheck`), độ phủ kịch bản và chẩn đoán lỗi (nếu `FAILED`).
 3. **`review-report.md`** *(Do `code-reviewer` tạo)*:
    - Báo cáo thẩm định kiến trúc, bảo mật, hiệu năng trên `git diff` của `src/` và quyết định nghiệm thu cuối cùng (`APPROVED` hoặc `CHANGES_REQUESTED`).

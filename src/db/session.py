@@ -1,7 +1,8 @@
 """Async Database Engine & Session Factory for PostgreSQL (asyncpg)."""
 
-from collections.abc import AsyncGenerator
 import os
+from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,

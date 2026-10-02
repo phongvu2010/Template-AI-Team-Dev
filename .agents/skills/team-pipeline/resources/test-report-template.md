@@ -8,11 +8,12 @@
 
 ## 1. Tóm tắt Kết quả Kiểm thử (Test Execution Summary)
 
-| Tầng (Layer) | Thư mục kiểm thử | Công cụ (Runner) | Tổng số Test | Passed | Failed | Ghi chú |
-| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
-| **Database (`src/db/`)** | `src/backend/tests/` hoặc `src/db/tests/` | `PYTHONPATH=src pytest` | 0 | 0 | 0 | SQLite memory fallback |
-| **Backend (`src/backend/`)** | `src/backend/tests/` | `PYTHONPATH=src pytest` | 0 | 0 | 0 | `httpx.AsyncClient` |
-| **Frontend (`src/frontend/`)** | `src/frontend/` | `tsc --noEmit / vitest` | 0 | 0 | 0 | Type safety & components |
+| Tầng (Layer) | Thư mục kiểm thử | Công cụ (Runner) | Trạng thái / Passed | Failed | Ghi chú |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **Linter & Code Standards** | `src/` | `.venv/bin/ruff check src/` | PASSED | 0 | Syntax, imports, code style |
+| **Database (`src/db/`)** | `src/backend/tests/` hoặc `src/db/tests/` | `PYTHONPATH=src .venv/bin/pytest` | 0 | 0 | SQLite memory fallback |
+| **Backend (`src/backend/`)** | `src/backend/tests/` | `PYTHONPATH=src .venv/bin/pytest` | 0 | 0 | `httpx.AsyncClient` |
+| **Frontend (`src/frontend/`)** | `src/frontend/` | `npm --prefix src/frontend run typecheck` | 0 | 0 | Strict TypeScript safety |
 
 ---
 
@@ -24,7 +25,17 @@
 
 ## 3. Lệnh Thực thi & Kết quả Đầu ra (Command Output)
 ```text
-<Dán kết quả chạy pytest / vitest / tsc tại đây>
+# 1. Ruff Linter Output:
+.venv/bin/ruff check src/
+All checks passed!
+
+# 2. Pytest Output:
+PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v
+...
+
+# 3. Frontend Typecheck Output:
+npm --prefix src/frontend run typecheck
+...
 ```
 
 ---

@@ -1,6 +1,7 @@
 """Database Base & Mixins for SQLAlchemy 2.0 (PostgreSQL / Async)."""
 
 from datetime import datetime
+
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 

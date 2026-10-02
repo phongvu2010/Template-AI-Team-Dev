@@ -49,7 +49,7 @@ Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-
 | [`db-dev`](.agents/agents/db-dev.md) | Database Specialist | `src/db/` | PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`), Alembic |
 | [`frontend-dev`](.agents/agents/frontend-dev.md) | Frontend Specialist | `src/frontend/` | React 19, Next.js (App Router), TypeScript Strict, Tailwind CSS |
 | [`backend-dev`](.agents/agents/backend-dev.md) | Backend Specialist | `src/backend/` | Python 3.11+, FastAPI, Pydantic v2, Async Services |
-| [`qa-tester`](.agents/agents/qa-tester.md) | QA & Automated Tester | `docs/specs/<slug>/test-report.md` | `pytest` (`PYTHONPATH=src`), SQLite memory fallback, `tsc --noEmit` |
+| [`qa-tester`](.agents/agents/qa-tester.md) | QA & Automated Tester | `docs/specs/<slug>/test-report.md` | Linter `ruff` (.venv/bin/ruff), `pytest` (`.venv/bin/pytest`), SQLite fallback, `npm run typecheck` |
 | [`code-reviewer`](.agents/agents/code-reviewer.md) | Principal Code Reviewer | `docs/specs/<slug>/review-report.md` | Audit `git diff`, Kiến trúc, Bảo mật (OWASP), N+1 & A11y |
 
 ---
@@ -102,7 +102,7 @@ Agent chính (**Tech Lead**) sẽ tự động:
 1. Gọi `planner` lập bản thiết kế tại `docs/specs/category-management/plan.md`.
 2. **Wave 1**: Gọi song song `db-dev` (viết model trong `src/db/`) và `frontend-dev` (dựng UI/Types trong `src/frontend/`).
 3. **Wave 2**: Gọi `backend-dev` viết router & service trong `src/backend/` kết nối trực tiếp `src/db/`.
-4. Gọi `qa-tester` chạy bộ kiểm thử tự động với `PYTHONPATH=src` và xuất `test-report.md`.
+4. Gọi `qa-tester` chạy kiểm tra `ruff` linter và bộ kiểm thử tự động với `PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` và xuất `test-report.md`.
 5. Gọi `code-reviewer` audit qua `git diff` và xuất `review-report.md` (`APPROVED`).
 6. **Đóng gói & Commit**: Tự động rà soát `git status` và tạo commit chuẩn Conventional Commits `feat(<slug>): ...` ghi nhận mốc hoàn thành.
 
@@ -111,5 +111,5 @@ Agent chính (**Tech Lead**) sẽ tự động:
 - *"Nhờ `db-dev` thêm trường `thumbnail_url` vào bảng `categories` tại `src/db/`."*
 - *"Nhờ `backend-dev` viết thêm endpoint lọc danh mục tại `src/backend/`."*
 - *"Nhờ `frontend-dev` hoàn thiện component CategoryCard tại `src/frontend/`."*
-- *"Nhờ `qa-tester` chạy lại pytest cho tầng backend."*
+- *"Nhờ `qa-tester` kiểm tra lint và chạy lại pytest cho tầng backend."*
 - *"Nhờ `code-reviewer` review các thay đổi mới nhất qua git diff."*

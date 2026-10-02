@@ -1,9 +1,8 @@
 """Alembic async environment configuration for PostgreSQL + SQLAlchemy 2.0."""
 
 import asyncio
-from logging.config import fileConfig
 import os
-import sys
+from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
@@ -12,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Import Base and models for Alembic autogenerate
 from db.base import Base
+
 try:
     import db.models  # noqa: F401
 except ImportError:

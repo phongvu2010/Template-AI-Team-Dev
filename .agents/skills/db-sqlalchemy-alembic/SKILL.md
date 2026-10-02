@@ -60,3 +60,9 @@ class TimestampMixin:
 - Sử dụng `from sqlalchemy import select, update, delete`.
 - Khi cần tải bảng liên kết (`relationship`), bắt buộc dùng `select(Model).options(selectinload(Model.items))` để tránh lỗi `MissingGreenlet` và lỗi hiệu năng **N+1 Query**.
 - Dùng `await session.flush()` và `await session.refresh(instance)` trong repository để lấy ID/default values trước khi tầng service `commit()`.
+
+## 4. Cơ chế Auto-Discovery cho Models (`src/db/models/__init__.py`)
+- Mọi model SQLAlchemy mới được tạo trong `src/db/models/<resource>.py`.
+- File `src/db/models/__init__.py` sử dụng cơ chế tự động tìm nạp (`pkgutil.iter_modules`) toàn bộ các model module khi `import db.models` được gọi từ `env.py`.
+- Nhờ cơ chế này, lệnh `alembic revision --autogenerate -m "..."` luôn phát hiện đầy đủ metadata của các bảng mới mà không bao giờ gặp lỗi thiếu model do quên export.
+

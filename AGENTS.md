@@ -42,8 +42,8 @@ Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi
 
 Toàn bộ mã nguồn thực thi được tổ chức thống nhất trong thư mục `src/`:
 
-- **Database (`src/db/`)**: PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`, `Mapped`, `mapped_column`, `asyncpg`), Alembic.
-- **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), `pytest` + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ `PYTHONPATH=src`.
+- **Database (`src/db/`)**: PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`, `Mapped`, `mapped_column`, `asyncpg`), Alembic. File `src/db/models/__init__.py` tích hợp sẵn auto-discovery toàn bộ models cho Alembic autogenerate.
+- **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), Linter `ruff` (.venv/bin/ruff), Test runner `pytest` (luôn dùng `.venv/bin/pytest`) + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ `PYTHONPATH=src`.
 - **Frontend (`src/frontend/`)**: Next.js (App Router), React 19, TypeScript (Strict mode), Tailwind CSS.
 - **Tài liệu & Handoff Artifacts (`docs/specs/<feature-slug>/`)**:
   - `plan.md`: Bản thiết kế kỹ thuật & hợp đồng giao tiếp (Data Schema + API Contract + Component Spec).
@@ -84,8 +84,9 @@ Sau khi `docs/specs/<feature-slug>/plan.md` hoàn tất:
 Sau khi `backend-dev` và `frontend-dev` hoàn thành:
 1. Gọi `invoke_subagent` với `TypeName: "qa-tester"` (Role: `"QA & Automated Tester"`).
 2. `qa-tester` đọc `plan.md`, viết test tự động (`src/backend/tests/`, `src/frontend/`):
-   - Chạy test Backend với `PYTHONPATH=src pytest src/backend/tests` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback khi chạy kiểm thử cô lập không có PostgreSQL).
-   - Chạy test Frontend (`tsc --noEmit` hoặc `vitest`).
+   - Kiểm tra Linting & Code Style: `.venv/bin/ruff check src/`
+   - Chạy test Backend với `PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback khi chạy kiểm thử cô lập không có PostgreSQL). Luôn sử dụng đường dẫn cụ thể `.venv/bin/pytest` để đảm bảo nạp đúng virtualenv.
+   - Chạy test Frontend (`npm --prefix src/frontend run typecheck` hoặc `vitest`).
    - Xuất kết quả vào `docs/specs/<feature-slug>/test-report.md`.
 3. **Vòng lặp Sửa lỗi (Self-Healing Bug Fix Loop)**:
    - Nếu `test-report.md` báo `FAILED`, Orchestrator phân tích nguyên nhân lỗi thuộc tầng nào (`src/db/`, `src/backend/`, hay `src/frontend/`) và gửi tin nhắn (`send_message`) hoặc gọi lại đúng Dev subagent đó để sửa lỗi, sau đó yêu cầu `qa-tester` chạy lại (tối đa 3 vòng lặp).
