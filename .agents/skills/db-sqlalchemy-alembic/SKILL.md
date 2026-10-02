@@ -60,19 +60,38 @@ src/db/
 
 ---
 
-## 5. Chiến Lược Quản Lý Migration (Online vs Offline)
-- **Kịch bản 1: Có PostgreSQL Runtime (`docker compose up -d postgres`)**:
+## 5. Chiến Lược Quản Lý Migration (Online, Offline & Supabase)
+- **Kịch bản 1: Có PostgreSQL Runtime Local (`docker compose up -d postgres`)**:
   - Chạy `alembic revision --autogenerate -m "<slug>"` để tự động sinh migration.
   - Chạy `alembic upgrade head` để đồng bộ DB.
-- **Kịch bản 2: Không có PostgreSQL Runtime / Sandbox**:
+- **Kịch bản 2: Sử dụng Supabase (Hosted PostgreSQL)**:
+  - **FastAPI App Runtime (`DATABASE_URL`)**: Kết nối qua Supavisor Transaction Pooler (`port 6543`):
+    `postgresql+asyncpg://postgres.[REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?ssl=require&prepared_statement_cache_size=0`
+  - **Alembic DDL Migrations (`DIRECT_DATABASE_URL`)**: BẮT BUỘC dùng Session Pooler hoặc Direct Connection (`port 5432`):
+    `postgresql+asyncpg://postgres.[REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?ssl=require`
+    *Lý do kỹ thuật: Supavisor Transaction Pooler (port 6543) ngắt kết nối session sau mỗi query, không hỗ trợ prepared statements và session-level table locks cần thiết khi chạy Alembic DDL migrations.*
+  - Chạy `alembic upgrade head` để migrate trực tiếp lên Supabase.
+  - Hỗ trợ thiết lập Row Level Security (RLS) và policies trực tiếp trong migration hoặc model khi cần bảo mật multi-tenant.
+- **Kịch bản 3: Không có PostgreSQL Runtime / Sandbox**:
   - Chạy `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>`
   - Script sẽ tự động đọc `src/db/migrations/versions/`, tìm `down_revision` gần nhất, sinh UUID revision ID 12 ký tự và tạo file template chuẩn.
   - `db-dev` chỉ cần điền các lệnh `op.create_table(...)` trong `upgrade()` và `op.drop_table(...)` trong `downgrade()`.
 
 ---
 
-## 6. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop)
+## 6. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop Protocol)
 Khi nhận tin nhắn `[SELF-HEALING ACTION REQUIRED]` từ QA hoặc `[REVIEW-FIX ACTION REQUIRED]` từ Reviewer:
 1. Xác định nguyên nhân lỗi (sai sót model, thiếu index, vi phạm N+1 query).
-2. Sửa lỗi trong `src/db/`, chạy `.venv/bin/ruff check src/db/`.
-3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`.
+2. Sửa lỗi trong `src/db/`, chạy smoke test: `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/...`.
+3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`:
+   ```text
+   [FIX-COMPLETED]
+   - Feature: <feature-slug>
+   - Iteration: <iteration_number>
+   - Target Agent: db-dev
+   - Modified Files: <danh sách files đã sửa>
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi schema/column nếu TRUE, hoặc NONE>
+   - Resolved Bug/Finding IDs: <BUG-01, ...>
+   - Summary of Fix: <tóm tắt ngắn gọn giải pháp>
+   ```

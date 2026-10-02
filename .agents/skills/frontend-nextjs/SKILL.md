@@ -71,6 +71,10 @@ src/frontend/
    ```typescript
    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+   export function isMockMode(): boolean {
+     return process.env.NEXT_PUBLIC_USE_MOCKS === "true";
+   }
+
    export class ApiError extends Error {
      constructor(
        public status: number,
@@ -81,17 +85,41 @@ src/frontend/
      }
    }
 
+   export interface ApiRequestOptions extends RequestInit {
+     mockData?: unknown;
+     invalidateCache?: boolean;
+   }
+
+   export function clearClientApiCache(): void {
+     if (typeof window !== "undefined") {
+       // Xóa sạch storage cache liên quan API
+       sessionStorage.clear();
+     }
+   }
+
    export async function apiRequest<T>(
      endpoint: string,
-     options?: RequestInit,
+     options?: ApiRequestOptions,
    ): Promise<T> {
+     if (isMockMode() && options?.mockData !== undefined) {
+       return options.mockData as T;
+     }
+
+     const { mockData: _, invalidateCache, ...fetchOptions } = options ?? {};
+     // Next.js 15: Mặc định cache 'no-store' khi chạy Live API để triệt tiêu stale mock/cache
+     const cacheStrategy: RequestCache =
+       fetchOptions.cache ?? (invalidateCache || !isMockMode() ? "no-store" : "default");
+
      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-       ...options,
+       ...fetchOptions,
+       cache: cacheStrategy,
        headers: {
          "Content-Type": "application/json",
-         ...options?.headers,
+         ...(invalidateCache || !isMockMode() ? { "Cache-Control": "no-cache" } : {}),
+         ...fetchOptions.headers,
        },
      });
+   ```
 
      if (!response.ok) {
        let detail = `HTTP Error ${response.status}`;
@@ -366,8 +394,19 @@ export function cn(...inputs: ClassValue[]): string {
 
 ---
 
-## 7. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop)
+## 7. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop Protocol)
 Khi nhận tin nhắn `[SELF-HEALING ACTION REQUIRED]` từ QA hoặc `[REVIEW-FIX ACTION REQUIRED]` từ Reviewer:
 1. Xác định nguyên nhân (lỗi typecheck, thiếu loading/error state, lỗi mock data, hoặc vi phạm React 19 pattern).
 2. Sửa lỗi trong `src/frontend/`, chạy `npm --prefix src/frontend run typecheck`.
-3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`.
+3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`:
+   ```text
+   [FIX-COMPLETED]
+   - Feature: <feature-slug>
+   - Iteration: <iteration_number>
+   - Target Agent: frontend-dev
+   - Modified Files: <danh sách files đã sửa>
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi TypeScript interface / client nếu TRUE, hoặc NONE>
+   - Resolved Bug/Finding IDs: <BUG-01, ...>
+   - Summary of Fix: <tóm tắt ngắn gọn giải pháp>
+   ```

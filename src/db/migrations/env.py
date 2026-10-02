@@ -30,8 +30,9 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
-# Override sqlalchemy.url with environment variable if present
-database_url = os.getenv("DATABASE_URL")
+# Override sqlalchemy.url with environment variable if present.
+# Prefer DIRECT_DATABASE_URL (direct connection or Session port 5432) for Alembic DDL migrations.
+database_url = os.getenv("DIRECT_DATABASE_URL") or os.getenv("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
@@ -72,10 +73,18 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """In this scenario we create an Engine and associate a connection with the context."""
+    connect_args = {}
+    current_url = config.get_main_option("sqlalchemy.url") or ""
+    if ":6543" in current_url or "pooler.supabase.com" in current_url:
+        connect_args["prepared_statement_cache_size"] = 0
+        connect_args["statement_cache_size"] = 0
+
+    section = config.get_section(config.config_ini_section, {})
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

@@ -33,9 +33,10 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`db-dev`, `qa-tester`, `code-r
 
 ## 3. Tổ Chức Models, Migrations & Seeds
 - **Auto-Discovery Models**: File `src/db/models/__init__.py` tự động nạp mọi model con cho Alembic autogenerate.
-- **Phân tách Migration & Testing**:
+- **Phân tách Migration & Testing (Supabase / Local / Offline)**:
   - SQLite in-memory test (`:memory:`) được sinh bảng tự động qua `Base.metadata.create_all` trong `conftest.py`. Không áp dụng Alembic cho SQLite in-memory test.
-  - Alembic chỉ dùng cho PostgreSQL runtime (`docker compose up -d postgres`).
+  - Khi dùng Supabase: BẮT BUỘC dùng `DIRECT_DATABASE_URL` (Session Pooler hoặc Direct port `5432`, `ssl=require`) để chạy `alembic upgrade head`. Không dùng Transaction Pooler port `6543` vì không hỗ trợ prepared statements & session locks cho migration DDL.
+  - Khi có PostgreSQL runtime local: Dùng `alembic upgrade head` (`docker compose up -d postgres`).
   - Trong sandbox / môi trường không có PostgreSQL: Chạy `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` để tự động sinh file migration chuẩn xác (kèm ID revision hợp lệ) trong `src/db/migrations/versions/`, sau đó hoàn thiện logic `upgrade()` và `downgrade()`.
 - **Seed Data**: Đặt tại `src/db/seeds/<module>_seed.py`, đảm bảo tính idempotent (kiểm tra tồn tại trước khi add). Chạy qua `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
 
@@ -52,6 +53,8 @@ Khi nhận tin nhắn điều phối `[SELF-HEALING ACTION REQUIRED]` từ QA ho
    - Iteration: <iteration_number>
    - Target Agent: db-dev
    - Modified Files: src/db/...
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi schema/column nếu TRUE, hoặc NONE>
    - Resolved Bug/Finding IDs: <BUG-01 hoặc REV-01>
    - Summary of Fix: <tóm tắt ngắn giải pháp đã thực hiện>
    ```

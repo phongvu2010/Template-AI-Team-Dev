@@ -91,8 +91,19 @@ src/backend/
 
 ---
 
-## 5. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop)
+## 5. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop Protocol)
 Khi nhận tin nhắn `[SELF-HEALING ACTION REQUIRED]` từ QA hoặc `[REVIEW-FIX ACTION REQUIRED]` từ Reviewer:
 1. Xác định lỗi từ file, dòng code và traceback được cung cấp.
-2. Sửa lỗi trong `src/backend/`, chạy `.venv/bin/ruff check src/backend/`.
-3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`.
+2. Sửa lỗi trong `src/backend/`, chạy smoke test: `.venv/bin/ruff check src/backend/` và `python3 -m py_compile src/backend/...`.
+3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`:
+   ```text
+   [FIX-COMPLETED]
+   - Feature: <feature-slug>
+   - Iteration: <iteration_number>
+   - Target Agent: backend-dev
+   - Modified Files: <danh sách files đã sửa>
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi schema/endpoint nếu TRUE, hoặc NONE>
+   - Resolved Bug/Finding IDs: <BUG-01, ...>
+   - Summary of Fix: <tóm tắt ngắn gọn giải pháp>
+   ```

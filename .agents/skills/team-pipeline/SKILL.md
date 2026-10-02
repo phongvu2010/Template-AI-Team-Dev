@@ -53,6 +53,7 @@ Nhằm đảm bảo tính cô lập và toàn vẹn của hệ thống, mọi t�
 Gọi `invoke_subagent`:
 - `TypeName`: `"planner"`
 - `Role`: `"System Architect & Planner"`
+- `Model`: `"pro"` *(Model Pro đảm bảo khả năng tổng hợp kiến trúc sâu và ma trận dữ liệu 3 tầng)*
 - `Prompt`: Đọc mẫu `.agents/skills/team-pipeline/resources/plan-template.md`, khảo sát hiện trạng `src/` và tạo bản thiết kế đầy đủ tại `docs/specs/<feature-slug>/plan.md`.
 - **Yêu cầu bắt buộc**:
   - Thiết lập bảng **Cross-Layer Data Contract Matrix**: Thống nhất 100% tên trường `snake_case` giữa DB Column, Pydantic Schema và TypeScript Interface.
@@ -60,20 +61,28 @@ Gọi `invoke_subagent`:
   - Cung cấp Wave 1 Mock Fixtures cho Frontend.
   - Ma trận truy xuất Acceptance Criteria (`AC-ID` -> `TC-ID`).
 
-### Bước 2: Khởi chạy Đội ngũ Dev theo Quy trình 2-Wave
+### Bước 2: Khởi chạy Đội ngũ Dev theo Quy trình 2-Wave + Wave Handshake Gate
 - **Chiến lược Workspace Mode (`Workspace: "inherit"`)**:
   - Khi gọi `invoke_subagent` cho các Dev Squads, bắt buộc đặt `"Workspace": "inherit"`. Vì `db-dev` (`src/db/`), `frontend-dev` (`src/frontend/`) và `backend-dev` (`src/backend/`) thao tác trên các thư mục độc lập tuyệt đối, việc kế thừa workspace loại bỏ xung đột Git và giúp Wave 2 cùng QA nhìn thấy code ngay lập tức mà không cần merge branch.
 - **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
-  - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng lệnh `invoke_subagent`.
-  - `db-dev` xây dựng models (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`), repositories async (dùng `selectinload`), migrations (dùng `generate_offline_migration.py` nếu không có PostgreSQL) và seeds tại `src/db/`.
+  - Gọi đồng thời `db-dev` (`Model: "inherit"`) và `frontend-dev` (`Model: "inherit"`) trong cùng lệnh `invoke_subagent`.
+  - `db-dev` xây dựng models (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`), repositories async (dùng `selectinload`), migrations (dùng `DIRECT_DATABASE_URL` port 5432 nếu có Supabase, hoặc `generate_offline_migration.py` nếu không có PostgreSQL) và seeds tại `src/db/`.
   - `frontend-dev` xây dựng TypeScript types, API client wrapper, mock fixtures và UI components xử lý đủ 4 trạng thái (Loading, Error, Empty, Success) tại `src/frontend/` (hỗ trợ `isMockMode()` với cờ `NEXT_PUBLIC_USE_MOCKS=true` để phát triển và kiểm chứng UI độc lập).
+- **Wave Handshake Gate (Chốt kiểm tra chéo trước Wave 2)**:
+  - Trước khi khởi chạy `backend-dev`, Tech Lead chạy smoke check:
+    ```bash
+    python3 -m py_compile src/db/models/*.py
+    .venv/bin/ruff check src/db/
+    ```
+  - Xác nhận models compile sạch sẽ và được export đầy đủ tại `src/db/models/__init__.py`. Nếu có lỗi cú pháp, gửi ngay `[SELF-HEALING ACTION REQUIRED]` cho `db-dev`.
 - **Wave 2 (Triển khai `backend-dev` & Đồng bộ Live API)**:
-  - Ngay khi `db-dev` hoàn thành models, gọi `backend-dev` trong `invoke_subagent`.
+  - Khi Wave Handshake Gate đạt yêu cầu, gọi `backend-dev` (`Model: "inherit"`) trong `invoke_subagent`.
   - `backend-dev` tạo Pydantic v2 schemas (`ConfigDict(from_attributes=True)`), services nghiệp vụ và API routers tại `src/backend/`, kết nối trực tiếp với models từ `src/db/` qua `PYTHONPATH=src`.
-  - **Đồng bộ Mock → Live API**: Sau khi Backend hoàn thành các endpoints, chuyển `NEXT_PUBLIC_USE_MOCKS=false` để toàn bộ ứng dụng chuyển sang tích hợp trực tiếp với API thật của FastAPI.
+  - **Đồng bộ Mock → Live API & Cache Invalidation**: Sau khi Backend hoàn thành các endpoints, chuyển `NEXT_PUBLIC_USE_MOCKS=false`. Typed API client tự động áp dụng `cache: 'no-store'`, header `Cache-Control: 'no-cache'`, và gọi `clearClientApiCache()` để xóa sạch cache mock cũ.
 
 ### Bước 3: Khởi chạy `qa-tester` & Vòng lặp Tự sửa lỗi (Self-Healing Loop)
-Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
+Gọi `invoke_subagent` với `TypeName: "qa-tester"`, `Model: "flash"`:
+- *(Dùng Model Flash giúp hoàn thành chuỗi CLI linter/tests nhanh hơn 60% và tiết kiệm token)*.
 - `qa-tester` chạy chuỗi kiểm tra:
   1. `.venv/bin/ruff check src/`
   2. `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`
@@ -101,15 +110,19 @@ Gọi `invoke_subagent` với `TypeName: "qa-tester"`:
       - Iteration: <iteration_number>
       - Target Agent: <tên_agent>
       - Modified Files: <danh sách files đã sửa>
+      - Contract Modified: TRUE | FALSE
+      - Contract Changes: <chi tiết thay đổi schema/endpoint nếu TRUE, hoặc NONE>
       - Resolved Bug IDs: <BUG-01, ...>
       - Summary of Fix: <tóm tắt ngắn gọn giải pháp>
       ```
+    - **Contract Drift Protection**: Nếu `Contract Modified: TRUE`, Tech Lead cập nhật `docs/specs/<feature-slug>/plan.md`, nâng `version` (e.g. `1.1.0`), đồng bộ lại Cross-Layer Data Contract Matrix và gửi thông báo cho squad liên quan.
     - Tech Lead yêu cầu `qa-tester` chạy lại bài test. Tăng `iteration` thêm 1.
     - **Cơ chế Ngắt Mạch (Circuit Breaker)**: Tối đa **3 lần lặp**. Nếu quá 3 lần vẫn thất bại, tạm dừng và báo cáo sự cố cho User.
 
 ### Bước 4: Khởi chạy `code-reviewer` & Vòng lặp Phản hồi Review
 Khi `test-report.md` đạt `PASSED 100%`:
-- Gọi `invoke_subagent` với `TypeName: "code-reviewer"`.
+- Gọi `invoke_subagent` với `TypeName: "code-reviewer"`, `Model: "pro"`.
+- *(Dùng Model Pro để phân tích chuyên sâu các lỗ hổng bảo mật OWASP, N+1 query và Data Contract Alignment)*.
 - `code-reviewer` thực thi **Token-Optimized Audit Protocol**:
   1. `git status --short` quét nhanh các file mới và sửa đổi.
   2. `git diff --stat` đo lường quy mô thay đổi.
@@ -131,7 +144,7 @@ Khi `test-report.md` đạt `PASSED 100%`:
       - Remediation Guidance: <hướng dẫn sửa của reviewer>
       - Instructions: Khắc phục đúng các điểm vi phạm trên trong thư mục phân quyền. Chạy smoke test và gửi báo cáo [FIX-COMPLETED] khi hoàn tất.
       ```
-    - Dev Squad sửa lỗi và gửi `[FIX-COMPLETED]`.
+    - Dev Squad sửa lỗi và gửi `[FIX-COMPLETED]`. Nếu `Contract Modified: TRUE`, Tech Lead cập nhật `plan.md`.
     - Tech Lead yêu cầu `qa-tester` chạy lại bài test để chống lỗi hồi quy (regression), sau đó yêu cầu `code-reviewer` thẩm định lại. Tối đa 3 vòng lặp.
   - Khi Verdict đạt `APPROVED`, chuyển sang Bước 5.
 

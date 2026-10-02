@@ -76,6 +76,8 @@ Khi nhận tin nhắn yêu cầu sửa lỗi từ Tech Lead Orchestrator:
    - Iteration: <iteration_number>
    - Target Agent: backend-dev
    - Modified Files: src/backend/...
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi schema/endpoint nếu TRUE, hoặc NONE>
    - Resolved Bug/Finding IDs: <BUG-01 hoặc REV-01>
    - Summary of Fix: <mô tả ngắn giải pháp đã thực hiện>
    ```

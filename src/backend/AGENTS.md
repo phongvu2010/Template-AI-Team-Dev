@@ -55,6 +55,8 @@ Khi nhận tin nhắn điều phối `[SELF-HEALING ACTION REQUIRED]` từ QA ho
    - Iteration: <iteration_number>
    - Target Agent: backend-dev
    - Modified Files: src/backend/...
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi schema/endpoint nếu TRUE, hoặc NONE>
    - Resolved Bug/Finding IDs: <BUG-01 hoặc REV-01>
    - Summary of Fix: <tóm tắt ngắn giải pháp đã thực hiện>
    ```

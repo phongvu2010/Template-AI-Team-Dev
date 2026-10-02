@@ -105,18 +105,18 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 
 ---
 
-## 2. Bảng Phân Công Trách Nhiệm & Rào Chắn Lệnh (RACI & Guardrails Matrix)
+## 2. Bảng Phân Công Trách Nhiệm, Model Tiering & Rào Chắn Lệnh (RACI Matrix)
 
-| Vai trò / Tác tử | Nhận diện Subagent | Thư mục sở hữu (Ownership) | Lệnh được phép (Whitelist) | Lệnh cấm (Blacklist) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Product Owner** | User (Con người) | Toàn dự án | Mọi lệnh hệ thống | - |
-| **Tech Lead** | Antigravity Main Agent | Toàn dự án | Điều phối subagents, `git status`, `git add`, `git commit` | Cấm `git reset --hard`, `git push --force` |
-| **Architect** | [`planner`](.agents/agents/planner.md) | `docs/specs/<slug>/` | Chỉ đọc/ghi file (`view_file`, `write_to_file`) | Cấm chạy shell commands làm đổi code |
-| **DB Specialist** | [`db-dev`](.agents/agents/db-dev.md) | `src/db/` | `.venv/bin/ruff check src/db/`, `python3 -m py_compile`, `generate_offline_migration.py`, `alembic`, `runner.py` | Cấm `rm -rf`, `dropdb`, `pip install`, ghi file ngoài `src/db/` |
-| **Frontend Dev** | [`frontend-dev`](.agents/agents/frontend-dev.md) | `src/frontend/` | `npm --prefix src/frontend run typecheck`, `run lint`, `run build` | Cấm `npm install` trần, ghi file ngoài `src/frontend/` |
-| **Backend Dev** | [`backend-dev`](.agents/agents/backend-dev.md) | `src/backend/` | `.venv/bin/ruff check src/backend/`, `python3 -m py_compile` | Cấm `pip install` trần, ghi file ngoài `src/backend/` |
-| **QA Specialist** | [`qa-tester`](.agents/agents/qa-tester.md) | `docs/specs/`, `tests/` | `.venv/bin/ruff check src/`, `PYTHONPATH=src .venv/bin/pytest`, `run typecheck` | Cấm tự ý sửa code nghiệp vụ trong `src/` |
-| **Code Reviewer** | [`code-reviewer`](.agents/agents/code-reviewer.md) | `docs/specs/` | `git status --short`, `git diff --stat`, `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock'`, `git diff` | Cấm chạy lệnh sửa code hoặc thay đổi git |
+| Vai trò / Tác tử | Nhận diện Subagent | Antigravity Model | Thư mục sở hữu (Ownership) | Lệnh được phép (Whitelist) | Lệnh cấm (Blacklist) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Product Owner** | User (Con người) | - | Toàn dự án | Mọi lệnh hệ thống | - |
+| **Tech Lead** | Antigravity Main Agent | `inherit` | Toàn dự án | Điều phối subagents, `python3 -m py_compile src/db/models/*.py` (Wave Gate), `git status`, `git add`, `git commit` | Cấm `git reset --hard`, `git push --force` |
+| **Architect** | [`planner`](.agents/agents/planner.md) | `pro` (Reasoning sâu) | `docs/specs/<slug>/` | Chỉ đọc/ghi file (`view_file`, `write_to_file`) | Cấm chạy shell commands làm đổi code |
+| **DB Specialist** | [`db-dev`](.agents/agents/db-dev.md) | `inherit` | `src/db/` | `.venv/bin/ruff check src/db/`, `python3 -m py_compile`, `generate_offline_migration.py`, `alembic`, `runner.py` | Cấm `rm -rf`, `dropdb`, `pip install`, ghi file ngoài `src/db/` |
+| **Frontend Dev** | [`frontend-dev`](.agents/agents/frontend-dev.md) | `inherit` / `flash` | `src/frontend/` | `npm --prefix src/frontend run typecheck`, `run lint`, `run build` | Cấm `npm install` trần, ghi file ngoài `src/frontend/` |
+| **Backend Dev** | [`backend-dev`](.agents/agents/backend-dev.md) | `inherit` | `src/backend/` | `.venv/bin/ruff check src/backend/`, `python3 -m py_compile` | Cấm `pip install` trần, ghi file ngoài `src/backend/` |
+| **QA Specialist** | [`qa-tester`](.agents/agents/qa-tester.md) | `flash` (Tiết kiệm 60% latency & token) | `docs/specs/`, `tests/` | `.venv/bin/ruff check src/`, `PYTHONPATH=src .venv/bin/pytest`, `run typecheck` | Cấm tự ý sửa code nghiệp vụ trong `src/` |
+| **Code Reviewer** | [`code-reviewer`](.agents/agents/code-reviewer.md) | `pro` (Audit bảo mật OWASP) | `docs/specs/` | `git status --short`, `git diff --stat`, `git diff -- src/ docs/ ':!*package-lock.json' ':!*.lock'`, `git diff` | Cấm chạy lệnh sửa code hoặc thay đổi git |
 
 ---
 
@@ -160,28 +160,40 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
   - `backend-dev`: Chỉ ghi trong `src/backend/`.
 
 #### Đợt 1 (Wave 1 - Triển khai song song):
-- **Nhánh 1A - Database Specialist (`db-dev` tại `src/db/`)**:
+- **Nhánh 1A - Database Specialist (`db-dev` tại `src/db/` — `Model: "inherit"`)**:
   - Tạo model trong `src/db/models/<name>.py` (kế thừa `UUIDPrimaryKeyMixin` và `TimestampMixin`).
   - Mảng dữ liệu dùng `JSON` (kèm variant PG nếu cần) để SQLite test không bị lỗi.
   - Viết repository async chống N+1 bằng `selectinload()`.
-  - **Quản lý Migration**:
-    - Khi có PostgreSQL runtime: `alembic revision --autogenerate -m "<slug>"`.
+  - **Quản lý Migration & Supabase**:
+    - Khi dùng Supabase: BẮT BUỘC dùng `DIRECT_DATABASE_URL` (Session Mode port 5432, `ssl=require`) để chạy `alembic upgrade head`. Không dùng Transaction Pooler port 6543 vì không hỗ trợ prepared statements & session locks cho migration DDL.
+    - Khi có PostgreSQL runtime local: `alembic revision --autogenerate -m "<slug>"`.
     - Khi trong Sandbox / không có DB live: `PYTHONPATH=src .venv/bin/python src/db/migrations/generate_offline_migration.py <slug>` để tự động tạo migration skeleton chuẩn có ID hợp lệ, sau đó điền `op.create_table()` và `op.drop_table()`.
   - Tạo kịch bản seed dữ liệu mẫu idempotent tại `src/db/seeds/<name>_seed.py`.
-- **Nhánh 1B - Frontend Specialist (`frontend-dev` tại `src/frontend/`)**:
+- **Nhánh 1B - Frontend Specialist (`frontend-dev` tại `src/frontend/` — `Model: "inherit"`)**:
   - Tạo TypeScript types tại `src/frontend/src/types/` khớp 100% với Data Contract Matrix (`snake_case`, 0 `any`).
   - Tạo mock fixtures tại `src/frontend/src/lib/api/mocks/` hỗ trợ `isMockMode()` và cờ `NEXT_PUBLIC_USE_MOCKS=true`.
   - Xây dựng UI components & pages Next.js Server Component-First xử lý trọn vẹn 4 trạng thái: Loading (loading.tsx), Error (error.tsx), Empty, Success.
   - Kiểm tra kiểu: `npm --prefix src/frontend run typecheck`.
 
+#### Wave Handshake Gate (Chốt kiểm tra chéo giữa Wave 1 & Wave 2):
+Trước khi kích hoạt `backend-dev` (Wave 2), Tech Lead Orchestrator thực hiện kiểm tra nhanh:
+```bash
+python3 -m py_compile src/db/models/*.py
+.venv/bin/ruff check src/db/
+```
+- Xác nhận `src/db/models/__init__.py` đã export các models mới.
+- *Nếu phát hiện lỗi cú pháp hoặc import*: DỪNG LẠI, KHÔNG khởi chạy `backend-dev` mà gửi ngay `[SELF-HEALING ACTION REQUIRED]` cho `db-dev` khắc phục. Chỉ khi models sạch sẽ mới chuyển giao cho Wave 2.
+
 #### Đợt 2 (Wave 2 - Kết nối Backend & Đồng bộ Live API):
-- **Backend Specialist (`backend-dev` tại `src/backend/`)**:
-  - Kích hoạt ngay sau khi `db-dev` hoàn thành models.
+- **Backend Specialist (`backend-dev` tại `src/backend/` — `Model: "inherit"`)**:
+  - Kích hoạt ngay sau khi vượt qua Wave Handshake Gate.
   - Viết Pydantic v2 schemas tại `src/backend/app/schemas/` (`ConfigDict(from_attributes=True)`, giới hạn `max_length`, `ge`/`le`).
   - Viết Services xử lý business logic và transaction tại `src/backend/app/services/`.
   - Viết API routers tại `src/backend/app/api/v1/endpoints/` kết nối models trực tiếp từ `src/db/` thông qua `PYTHONPATH=src`.
   - Cắm router vào `api_router` tập trung tại `src/backend/app/api/v1/router.py`.
-  - **Đồng bộ Mock → Live API**: Sau khi Backend hoàn tất, chuyển `NEXT_PUBLIC_USE_MOCKS=false` để toàn bộ ứng dụng chuyển sang tích hợp trực tiếp với API thật của FastAPI.
+  - **Đồng bộ Mock → Live API & Cache Invalidation**:
+    - Chuyển `NEXT_PUBLIC_USE_MOCKS=false` trong `.env`.
+    - Typed API Client trong `src/frontend/src/lib/api/client.ts` tự động áp dụng `cache: 'no-store'`, header `Cache-Control: 'no-cache'`, và gọi `clearClientApiCache()` để xóa sạch stale cache.
 
 ---
 
@@ -285,9 +297,12 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 - Iteration: <iteration_number>
 - Target Agent: <db-dev | backend-dev | frontend-dev>
 - Modified Files: <danh sách files đã sửa>
+- Contract Modified: TRUE | FALSE
+- Contract Changes: <chi tiết thay đổi schema/endpoint nếu TRUE, hoặc NONE>
 - Resolved Bug/Finding IDs: <BUG-01, REV-01, ...>
 - Summary of Fix: <tóm tắt ngắn gọn giải pháp khắc phục và kết quả smoke test cục bộ>
 ```
+*Lưu ý cho Tech Lead*: Nếu `Contract Modified: TRUE`, Tech Lead bắt buộc cập nhật lại `docs/specs/<feature-slug>/plan.md`, nâng `version` (e.g. `1.1.0`), đồng bộ lại Cross-Layer Data Contract Matrix và thông báo cho squad liên quan trước khi chạy lại QA.
 
 ### Mẫu 4: Báo Cáo Leo Thang Khi Kích Hoạt Circuit Breaker (`[CIRCUIT BREAKER ESCALATION]`)
 ```text
@@ -341,3 +356,13 @@ Dùng bảng này để nghiệm thu sản phẩm sau mỗi tính năng:
 ### Vấn đề 4: Sandbox không có internet khi subagent chạy `npm/pip install`
 * **Nguyên nhân**: Môi trường sandbox được cô lập để bảo mật.
 * **Cách khắc phục**: Tuyệt đối không cho agent chạy lệnh cài đặt trần. Cập nhật tên thư viện vào `pyproject.toml` hoặc `src/frontend/package.json` và gắn cờ `[DEPENDENCY REQUIRED]`.
+
+### Vấn đề 5: Supabase văng lỗi `prepared statement "__asyncpg_stmt_..." does not exist` khi chạy Alembic
+* **Nguyên nhân**: Kết nối Alembic DDL migrations qua Supavisor Transaction Pooler (port `6543`). Transaction mode ngắt kết nối session sau mỗi lệnh và không hỗ trợ prepared statement của asyncpg.
+* **Cách khắc phục**: Cấu hình `DIRECT_DATABASE_URL` trỏ trực tiếp vào Session Mode (port `5432`):
+  `postgresql+asyncpg://postgres.[REF]:[PASS]@aws-0-[REGION].pooler.supabase.com:5432/postgres?ssl=require`.
+  Đối với FastAPI App runtime (port `6543`), engine đã tự động đặt `prepared_statement_cache_size = 0`.
+
+### Vấn đề 6: Next.js 15 Client hiển thị dữ liệu Mock cũ sau khi đã chuyển sang Live API
+* **Nguyên nhân**: Router cache hoặc fetch cache của trình duyệt vẫn giữ response mock trước đó.
+* **Cách khắc phục**: `src/frontend/src/lib/api/client.ts` đã được thiết lập `cache: 'no-store'` khi `isMockMode() === false`. Ngoài ra, gọi hàm `clearClientApiCache()` để dọn sạch sessionStorage/localStorage.

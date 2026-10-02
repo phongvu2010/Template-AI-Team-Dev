@@ -83,6 +83,7 @@ Ghi báo cáo vào `docs/specs/<feature-slug>/review-report.md` theo mẫu [.age
   - **Vị trí**: `src/.../file.ts#L...`
   - **Code Vi phạm (Diff Evidence)**: Trích xuất code.
   - **Hướng dẫn Khắc phục (Remediation Guidance)**: Hướng dẫn sửa cụ thể.
+- **Phát hiện Lệch Hợp Đồng (Contract Drift Detection)**: Nếu phát hiện code trong `src/` đã thay đổi tên trường, thêm cột hoặc thay đổi API endpoint mà không khớp với `plan.md`, reviewer bắt buộc gắn cờ vi phạm `[MAJOR]` hoặc `[CRITICAL]` yêu cầu squad khai báo `Contract Modified: TRUE` để Tech Lead cập nhật lại `plan.md` (SSOT).
 - Tech Lead Orchestrator sẽ trích xuất thông tin này để kích hoạt thông điệp `[REVIEW-FIX ACTION REQUIRED]` gửi tới Dev Squad.
 
 ### Khi Verdict = `APPROVED`:

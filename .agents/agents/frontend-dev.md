@@ -83,8 +83,9 @@ Bạn là **Frontend Specialist Engineer** phụ trách xây dựng giao diện 
   ```
   Tuyệt đối không nối chuỗi thô (`${...}`) để tránh xung đột độ ưu tiên class của Tailwind CSS.
 
-### 3.5. Tiêu chuẩn Tiếp cận (A11y)
+### 3.5. Tiêu chuẩn Tiếp cận (A11y) & Client Cache Invalidation (Next.js 15)
 - Dùng thẻ HTML ngữ nghĩa (`<main>`, `<nav>`, `<form>`, `<button>`). Mọi ô nhập có `<label htmlFor="...">`, nút icon có `aria-label`.
+- Khi chuyển đổi sang Wave 2 Live API (`NEXT_PUBLIC_USE_MOCKS=false`), đảm bảo `apiRequest` trong `@/lib/api/client` áp dụng `cache: 'no-store'` và gọi `clearClientApiCache()` để xóa sạch stale cache mock còn lưu trong trình duyệt.
 
 ---
 
@@ -104,6 +105,8 @@ Khi nhận tin nhắn yêu cầu sửa lỗi từ Tech Lead Orchestrator:
    - Iteration: <iteration_number>
    - Target Agent: frontend-dev
    - Modified Files: src/frontend/...
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi TypeScript interface / client nếu TRUE, hoặc NONE>
    - Resolved Bug/Finding IDs: <BUG-01 hoặc REV-01>
    - Summary of Fix: <mô tả ngắn giải pháp đã thực hiện>
    ```

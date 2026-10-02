@@ -47,6 +47,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`frontend-dev`, `qa-tester`, `
   4. **Success state**: Render dữ liệu chuẩn xác, responsive trên di động và máy tính.
 - **Tiện ích Nối Class Tailwind**: Luôn dùng hàm `cn(...)` từ `@/lib/utils` (kết hợp `clsx` + `tailwind-merge`) khi xử lý conditional classes, tránh nối chuỗi thô gây xung đột CSS specificity.
 - **Accessibility (A11y)**: Sử dụng HTML ngữ nghĩa (`<main>`, `<nav>`, `<form>`, `<button>`), mọi ô nhập phải có `<label htmlFor="...">`, nút icon phải có `aria-label`.
+- **Client Cache Invalidation (Next.js 15)**: Khi hệ thống chuyển cờ `NEXT_PUBLIC_USE_MOCKS=false` để sang Wave 2 Live API, typed API client (`src/frontend/src/lib/api/client.ts`) tự động áp dụng `cache: 'no-store'` và gọi `clearClientApiCache()` để xóa sạch toàn bộ stale mock cache còn lưu trong trình duyệt.
 
 ---
 
@@ -61,6 +62,8 @@ Khi nhận tin nhắn điều phối `[SELF-HEALING ACTION REQUIRED]` từ QA ho
    - Iteration: <iteration_number>
    - Target Agent: frontend-dev
    - Modified Files: src/frontend/...
+   - Contract Modified: TRUE | FALSE
+   - Contract Changes: <chi tiết thay đổi TypeScript interface / client nếu TRUE, hoặc NONE>
    - Resolved Bug/Finding IDs: <BUG-01 hoặc REV-01>
    - Summary of Fix: <mô tả ngắn giải pháp đã thực hiện>
    ```

@@ -62,3 +62,8 @@ Trước khi bất kỳ dòng code tính năng nào được viết, bạn có t
 
 ### 7. Xuất Bản Artifact:
 - Ghi toàn bộ nội dung kèm Header Metadata chuẩn vào `docs/specs/<feature-slug>/plan.md`. Báo cáo tóm tắt ngắn gọn cho Tech Lead Orchestrator.
+
+### 8. Cập Nhật Hợp Đồng Khi Nhận Yêu Cầu Điều Chỉnh (Reverse Contract Sync):
+- Khi nhận yêu cầu điều chỉnh từ Tech Lead sau vòng sửa lỗi (khi Dev Squad báo cáo `Contract Modified: TRUE`):
+  - Tiến hành cập nhật lại các bảng ánh xạ và API spec trong `docs/specs/<feature-slug>/plan.md`.
+  - Tăng số hiệu `version` trong YAML frontmatter (ví dụ `1.0.0` $\to$ `1.1.0`) và ghi chú tóm tắt thay đổi vào mục Revision History để bảo toàn vị thế Single Source of Truth.
