@@ -40,7 +40,34 @@ Template này được thiết kế theo **Mô hình Ma trận (Matrix Architect
 
 ---
 
-## 2. Bước 1: Khởi tạo Repository Mới
+## 2. Tiêu Chí Lựa Chọn: Dự Án Nào Nên Sử Dụng Template Này?
+
+Nếu bạn là người mới sử dụng template này, hãy dùng bảng tiêu chí dưới đây để xác định dự án của bạn có phải là ứng viên hoàn hảo hay không:
+
+### 2.1. Checklist Đánh giá Phù hợp Dự án (Quick Decision Matrix)
+Trả lời các câu hỏi sau cho dự án bạn dự định xây dựng:
+1. **Bạn có cần một ứng dụng Web tương tác hiện đại không?** (Next.js 15, React 19, Tailwind CSS) $\to$ **CÓ**
+2. **Bạn có cần một Backend API bất đồng bộ hiệu năng cao bằng Python không?** (FastAPI, Pydantic v2) $\to$ **CÓ**
+3. **Bạn có lưu trữ dữ liệu quan hệ có ràng buộc, giao dịch ACID không?** (PostgreSQL, SQLAlchemy 2.0) $\to$ **CÓ**
+4. **Bạn có muốn AI tự động thiết kế, lập trình, kiểm thử và review code độc lập không?** (Antigravity 2.0 Multi-Agent) $\to$ **CÓ**
+
+> 👉 **Nếu có từ 3 câu trả lời "CÓ" trở lên**: Đây chính xác là template dành riêng cho dự án của bạn!
+
+### 2.2. Các Trường Hợp Sử Dụng Điển Hình (Sweet Spot)
+* **Dự án SaaS Khởi nghiệp (Startup SaaS MVP $\to$ Production)**: Các dịch vụ phần mềm dạng thuê bao cần xác thực người dùng, dashboard báo cáo, quản lý thanh toán và phân quyền (RBAC).
+* **Cổng thông tin & Nền tảng Quản trị (Internal Tools & Dashboards)**: CRM nội bộ, ERP mini, hệ thống quản trị kho, quản lý đặt lịch hẹn/booking, quản lý nhân sự hoặc đơn hàng.
+* **Sản phẩm Web B2B / B2C**: Sàn giao dịch dịch vụ, cổng tiếp nhận yêu cầu khách hàng, website thương mại điện tử vừa và nhỏ.
+* **Hệ thống REST API Chuyên nghiệp**: Cần backend API chuẩn mực, tài liệu Swagger tự động kèm bộ kiểm thử tự động cô lập.
+
+### 2.3. Các Trường Hợp KHÔNG Phù Hợp (Non-Goals)
+* ❌ Ứng dụng di động thuần (iOS/Android native hoặc Flutter/React Native) — trừ trường hợp bạn chỉ dùng phần `src/backend/` và `src/db/` làm REST API cho mobile app.
+* ❌ Hệ sinh thái Microservices đa ngôn ngữ phân tán (Java Spring, Go, Rust, .NET kết hợp).
+* ❌ Các tác vụ Khoa học Dữ liệu / AI Training thuần túy (chỉ chạy Notebook phân tích dữ liệu, không có Web UI).
+* ❌ Website tĩnh đơn giản không cần cơ sở dữ liệu (Static Blog, Landing Page một trang).
+
+---
+
+## 3. Bước 1: Khởi tạo Repository Mới
 
 ### Cách A: Sử dụng tính năng GitHub Template (Khuyên dùng)
 1. Trên repository này tại GitHub, bấm nút **"Use this template"** $\to$ chọn **"Create a new repository"**.
@@ -67,7 +94,7 @@ git commit -m "chore: initial commit from ai-team-dev template"
 
 ---
 
-## 3. Bước 2: Thiết lập Môi trường Phát triển (Chỉ mất 2 phút)
+## 4. Bước 2: Thiết lập Môi trường Phát triển (Chỉ mất 2 phút)
 
 Dự án sử dụng Python 3.11+ cho Backend/DB và Node.js 18+ cho Frontend Next.js.
 
@@ -105,7 +132,7 @@ docker compose up -d postgres
 
 ---
 
-## 4. Bước 3: Kiểm chứng Môi trường Day-0 (Smoke Verification)
+## 5. Bước 3: Kiểm chứng Môi trường Day-0 (Smoke Verification)
 
 Trước khi bắt đầu bất kỳ câu lệnh AI nào, hãy chạy lệnh kiểm tra toàn diện để đảm bảo chuỗi công cụ đã sẵn sàng:
 
@@ -120,7 +147,7 @@ Trước khi bắt đầu bất kỳ câu lệnh AI nào, hãy chạy lệnh ki�
 
 ---
 
-## 5. Bước 4: Bắt đầu Phát triển Tính năng cùng AI Team
+## 6. Bước 4: Bắt đầu Phát triển Tính năng cùng AI Team
 
 Mở thư mục dự án mới trong **Antigravity 2.0**, bạn đóng vai trò là **Product Owner / User**, giao tiếp trực tiếp với **Tech Lead Orchestrator**:
 
@@ -139,7 +166,7 @@ Mở thư mục dự án mới trong **Antigravity 2.0**, bạn đóng vai trò 
 
 ---
 
-## 6. Các Chế độ Thực thi Linh hoạt
+## 7. Các Chế độ Thực thi Linh hoạt
 
 Tùy vào nhu cầu công việc, bạn có thể chọn 1 trong 2 chế độ:
 
@@ -162,7 +189,7 @@ Tech Lead sẽ tự động điều phối:
 
 ---
 
-## 7. Các Nguyên tắc Sống còn Cần Nhớ (Best Practices)
+## 8. Các Nguyên tắc Sống còn Cần Nhớ (Best Practices)
 
 1. **Tuyệt đối không xoá thư mục `src/`**:
    - `src/` chứa các điểm neo (Anchor Points) và các file luật cục bộ [src/db/AGENTS.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/db/AGENTS.md), [src/backend/AGENTS.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/backend/AGENTS.md), [src/frontend/AGENTS.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/src/frontend/AGENTS.md).

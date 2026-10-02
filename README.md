@@ -4,6 +4,35 @@ Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-
 
 > 🚀 **Hướng dẫn Dùng Template Cho Dự Án Mới**: Xem cẩm nang chi tiết tại [TEMPLATE_GUIDE.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/TEMPLATE_GUIDE.md) để biết cách khởi tạo repo mới, cài đặt môi trường chỉ trong 2 phút và các câu lệnh mẫu.
 
+---
+
+## 🎯 Định Vị Template: Dự Án Nào Phù Hợp Chính Xác?
+
+Template này được tối ưu hoá chuyên sâu cho các dự án **Full-Stack Web Applications Hiện Đại** sử dụng bộ đôi công nghệ **Python (FastAPI) + TypeScript (Next.js)** kết hợp cơ sở dữ liệu quan hệ **PostgreSQL**.
+
+### 1. Hệ sinh thái Công nghệ Cố định (Fixed Stack Foundation)
+- **Database (`src/db/`)**: PostgreSQL 16+, SQLAlchemy 2.0 (Async), asyncpg, Alembic migrations tự động.
+- **Backend API (`src/backend/`)**: Python 3.11+, FastAPI (REST API), Pydantic v2 validation, Ruff linter, Pytest.
+- **Frontend Web (`src/frontend/`)**: React 19, Next.js (App Router), TypeScript (Strict), Tailwind CSS.
+- **Kiểm thử Cô lập**: SQLite async in-memory fallback giúp chạy toàn bộ test không cần cài PostgreSQL local.
+
+### 2. Các Loại Dự Án Phù Hợp Nhất (Sweet Spot / Best Fit)
+| Loại hình dự án | Mô tả chi tiết | Độ phù hợp |
+| :--- | :--- | :---: |
+| **SaaS Web Platforms** | Các ứng dụng SaaS quản lý thuê bao, xác thực, phân quyền (RBAC), thanh toán và dashboard báo cáo số liệu. | ⭐⭐⭐⭐⭐ (Hoàn hảo) |
+| **B2B / B2C Web Portals** | Cổng thông tin khách hàng, cổng đối tác, sàn dịch vụ, booking, marketplace vừa và nhỏ. | ⭐⭐⭐⭐⭐ (Hoàn hảo) |
+| **Internal Tools & Dashboards** | Hệ thống CRM nội bộ, quản trị bán hàng, theo dõi đơn hàng, quản lý kho bãi, nhân sự. | ⭐⭐⭐⭐⭐ (Hoàn hảo) |
+| **Startup MVP $\to$ Production** | Dự án khởi nghiệp cần đưa tính năng ra thị trường thần tốc bằng AI nhưng kiến trúc vẫn sạch và mở rộng được. | ⭐⭐⭐⭐⭐ (Hoàn hảo) |
+| **REST API Micro/Modular Backend** | Cần một Backend API chuẩn mực, có Swagger UI tự động và tài liệu hợp đồng API chặt chẽ. | ⭐⭐⭐⭐ (Rất tốt) |
+
+### 3. Khi Nào KHÔNG NÊN Dùng Template Này? (Non-Goals)
+- ❌ **Dự án Mobile App thuần (Native iOS/Android / Flutter / React Native)**: Template này chỉ xây dựng Web App Next.js (trừ khi bạn chỉ cần phần Backend API).
+- ❌ **Hệ thống Microservices đa ngôn ngữ (Java, Go, Rust, .NET)**: Template này thiết kế tối ưu cho mô hình **Modular Monolith** hoặc 2-Tier (FastAPI + Next.js).
+- ❌ **Data Science / Machine Learning thuần túy**: Nếu dự án chỉ chạy Jupyter Notebook, huấn luyện model PyTorch/TensorFlow lớn mà không cần web/API.
+- ❌ **Website tĩnh đơn giản (Static Blog, Landing Page 1 trang)**: Nên dùng Astro, Hugo hoặc Next.js static thuần không cần DB/FastAPI.
+
+---
+
 ```text
                                   ┌────────────────────────┐
                                   │      1. PLANNER        │
