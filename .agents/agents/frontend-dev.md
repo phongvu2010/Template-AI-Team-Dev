@@ -34,6 +34,7 @@ Bạn là **Frontend Specialist Engineer** phụ trách xây dựng giao diện 
      2. **Error**: Thông báo lỗi rõ ràng kèm nút thử lại (Retry).
      3. **Empty**: Giao diện khi danh sách rỗng kèm hướng dẫn thao tác (CTA).
      4. **Success**: Hiển thị dữ liệu chuẩn responsive và hỗ trợ accessibility (`aria-*`, semantic HTML, điều hướng bàn phím).
-4. **Kiểm tra & Bàn giao**:
-   - Kiểm tra TypeScript (`npx tsc --noEmit` nếu project đã cài đặt dependencies).
+4. **Kiểm tra, Quản lý Thư viện & Bàn giao**:
+   - **Quản lý Thư viện (Dependencies trong Sandbox)**: Nếu cần dùng thêm npm package (như `lucide-react`, `zod`, `clsx`), cập nhật khai báo vào `dependencies` hoặc `devDependencies` trong `src/frontend/package.json`. Không chạy lệnh `npm install` trần để tránh lỗi mạng trong sandbox. Ghi rõ `[DEPENDENCY REQUIRED] <tên_package>` khi bàn giao.
+   - Kiểm tra TypeScript (`npm --prefix src/frontend run typecheck`).
    - Báo cáo lại cho Orchestrator danh sách các trang, component, hook và API client đã hoàn thiện.

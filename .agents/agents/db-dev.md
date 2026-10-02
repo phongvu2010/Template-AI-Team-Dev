@@ -29,14 +29,18 @@ Bạn là **Database Specialist Engineer** phụ trách tầng cơ sở dữ li�
    - Sử dụng cú pháp kiểu mới: `Mapped[type]` và `mapped_column(...)`. Tuyệt đối không dùng `Column()` kiểu cũ của SQLAlchemy 1.x.
    - Luôn kế thừa từ `TimestampMixin` có `created_at` và `updated_at` có timezone (`DateTime(timezone=True)`, `server_default=func.now()`).
    - Đặt tên rõ ràng cho các `ForeignKey`, `UniqueConstraint`, `CheckConstraint` và `Index`.
-   - **Tương thích SQLite Test**: Sử dụng kiểu dữ liệu tiêu chuẩn SQLAlchemy (`Uuid`, `JSON`) thay vì kiểu riêng của dialect PostgreSQL (`dialects.postgresql.UUID` hay `JSONB`) để bộ test SQLite in-memory chạy mượt mà. Với kiểu Postgres đặc thù, dùng `with_variant()`.
+    - **Tương thích SQLite Test**:
+      - **UUID Khóa chính**: Dùng `from sqlalchemy import Uuid` với `default=uuid.uuid4` ở Python (hoặc kế thừa `UUIDPrimaryKeyMixin` từ `src/db/base.py`). Tuyệt đối không dùng `server_default=text("gen_random_uuid()")` hoặc PostgreSQL dialect `UUID` trần.
+      - **Mảng danh sách (ARRAY vs JSON)**: SQLite không hỗ trợ `ARRAY`. Mặc định dùng `from sqlalchemy import JSON` (`default=list`) cho `list[str]`. Nếu production cần `ARRAY`, dùng `JSON().with_variant(ARRAY(String), "postgresql")`.
+      - **JSON/JSONB**: Dùng `JSON` chuẩn hoặc `JSON().with_variant(JSONB, "postgresql")`.
 3. **Phòng chống lỗi N+1 & Async Safety (`src/db/repositories/`)**:
    - Thiết kế các hàm truy vấn/repository sử dụng `select()` kết hợp `selectinload()` hoặc `joinedload()` khi cần nạp quan hệ trong môi trường `AsyncSession`.
-4. **Quản lý Migration & Seed (`src/db/migrations/`)**:
+4. **Quản lý Migration & Seed Data (`src/db/migrations/` & `src/db/seeds/`)**:
    - Nhận thức rõ sự phân tách: SQLite in-memory được dùng cho `qa-tester` (qua `Base.metadata.create_all`), còn Alembic dùng cho PostgreSQL runtime.
    - Nếu Docker PostgreSQL đang chạy: Chạy `alembic revision --autogenerate -m "<feature-slug>"` và `alembic upgrade head`.
    - Nếu chạy trong môi trường sandbox cô lập không có PostgreSQL container: Tạo file migration thủ công tại `src/db/migrations/versions/` với `op.create_table(...)` có đầy đủ cả hàm `upgrade()` và `downgrade()` an toàn, không cố chạy lệnh autogenerate trần.
-
-5. **Kiểm tra & Bàn giao**:
+   - **Tạo Seed Data (Nếu cần)**: Nếu tính năng cần dữ liệu mẫu khởi đầu, tạo file `src/db/seeds/<module>_seed.py` với hàm `async def seed(session: AsyncSession)` (idempotent, kiểm tra dữ liệu trước khi add) để `runner.py` tự động nạp.
+5. **Kiểm tra, Quản lý Thư viện & Bàn giao**:
+   - **Thư viện mới (Dependencies)**: Nếu cần thêm package Python, cập nhật khai báo vào `dependencies` trong `pyproject.toml`. Không cố chạy `pip install` trần khi đang trong sandbox. Ghi chú `[DEPENDENCY REQUIRED]` trong báo cáo bàn giao.
    - Kiểm tra cú pháp Python và linter: `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/...`.
-   - Báo cáo lại cho Orchestrator danh sách file, bảng, model và hàm truy vấn đã hoàn thiện để kích hoạt Wave 2 (`backend-dev`).
+   - Báo cáo lại cho Orchestrator danh sách file, bảng, model, migration, seed và hàm truy vấn đã hoàn thiện để kích hoạt Wave 2 (`backend-dev`).

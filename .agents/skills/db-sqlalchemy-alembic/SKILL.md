@@ -68,7 +68,24 @@ class TimestampMixin:
 
 ## 5. Quy tắc Tương thích Kiểu Dữ liệu (Cross-DB Compatibility cho SQLite Test)
 Để bộ kiểm thử tự động với SQLite async in-memory (`conftest.py`) chạy hoàn hảo song song với PostgreSQL production:
-- **UUID**: Dùng `from sqlalchemy import Uuid` (`mapped_column(Uuid, primary_key=True, default=uuid4)`) thay vì import `UUID` từ dialect PostgreSQL.
+- **UUID Khóa chính**:
+  - Dùng `from sqlalchemy import Uuid` kết hợp sinh giá trị ở tầng Python: `default=uuid.uuid4` (hoặc kế thừa `UUIDPrimaryKeyMixin` từ `src/db/base.py`).
+  - **Tuyệt đối không dùng** `server_default=text("gen_random_uuid()")` hoặc kiểu dialect `from sqlalchemy.dialects.postgresql import UUID` trần vì SQLite in-memory không có hàm native `gen_random_uuid()`, sẽ gây lỗi test crash.
+- **Mảng danh sách (ARRAY vs JSON)**:
+  - SQLite **không hỗ trợ** kiểu native `ARRAY`. Để lưu mảng (ví dụ `tags: list[str]`, `roles: list[str]`), ưu tiên dùng `JSON` chuẩn:
+    ```python
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    ```
+  - Nếu bắt buộc dùng PostgreSQL native `ARRAY` trong production (để tận dụng GIN indexing), hãy dùng variant để SQLite test nạp dạng JSON an toàn:
+    ```python
+    from sqlalchemy import JSON
+    from sqlalchemy.dialects.postgresql import ARRAY, String
+
+    tags: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(ARRAY(String), "postgresql"),
+        default=list,
+    )
+    ```
 - **JSON / JSONB**: Sử dụng `from sqlalchemy import JSON` chuẩn hoặc variant:
   ```python
   from sqlalchemy import JSON
@@ -86,6 +103,15 @@ class TimestampMixin:
   - *Nếu Docker PostgreSQL đang chạy*: Khởi chạy `docker compose up -d postgres`, thực thi `alembic revision --autogenerate -m "<slug>"`, kiểm tra file sinh ra và chạy `alembic upgrade head`.
   - *Nếu trong Sandbox cô lập không có PostgreSQL*: Tự viết file migration tại `src/db/migrations/versions/<timestamp>_<slug>.py` với đầy đủ `op.create_table(...)` cho hàm `upgrade()` và `op.drop_table(...)` cho hàm `downgrade()`. Tuyệt đối không gọi lệnh trần autogenerate tránh treo kết nối.
   - *Kiểm tra*: Luôn chạy `.venv/bin/ruff check src/db/` và `python3 -m py_compile src/db/migrations/versions/*.py`.
+
+## 7. Kịch bản Seed Data cho Môi trường Phát triển Cục bộ (`src/db/seeds/`)
+Khi xây dựng tính năng mới cần nạp dữ liệu mẫu ban đầu (admin user, categories mặc định, sample items):
+1. **Tạo module seed**: Tạo file `src/db/seeds/<module>_seed.py` với hàm `async def seed(session: AsyncSession)` (hoặc dùng decorator `@register_seed`).
+2. **Tính Idempotent (Bảo vệ dữ liệu trùng lặp)**: Luôn kiểm tra sự tồn tại của dữ liệu (bằng `select()`) trước khi `session.add()` để script có thể chạy nhiều lần mà không bị lỗi Unique Constraint.
+3. **Thực thi Seeding**: Script `src/db/seeds/runner.py` tự động phát hiện mọi module `*_seed.py`. Người dùng hoặc dev chỉ cần chạy:
+   ```bash
+   PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py
+   ```
 
 
 

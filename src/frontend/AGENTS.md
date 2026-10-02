@@ -18,3 +18,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`frontend-dev`, `qa-tester`, `
    - Mọi ô nhập liệu phải có `<label htmlFor="...">` và thông báo lỗi validation rõ ràng.
 5. **Wave 1 Mocking Strategy**:
    - Khi Backend chưa triển khai (Wave 1), tạo mock fixtures tại `src/lib/api/mocks/` bám sát `plan.md` để test UI độc lập, không để xảy ra unhandled fetch exception khi render các trạng thái giao diện.
+6. **Quản lý Thư viện Mới (Dependencies Management trong Sandbox)**:
+   - Không tự ý chạy lệnh `npm install` trần trong sandbox để tránh lỗi network timeout.
+   - Khi cần thêm npm package mới (như `lucide-react`, `zod`, `clsx`), cập nhật trực tiếp vào `dependencies` hoặc `devDependencies` trong `src/frontend/package.json`.
+   - Báo cáo cho Tech Lead Orchestrator với thông báo: `[DEPENDENCY REQUIRED] <tên_package>` để phối hợp cài đặt.

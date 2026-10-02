@@ -36,11 +36,13 @@ Gọi `invoke_subagent`:
 Sau khi `plan.md` hoàn tất:
 - **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
   - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng một lệnh `invoke_subagent`.
-  - `db-dev` xây dựng models, migrations và repositories trong `src/db/`.
+  - `db-dev` xây dựng models, migrations, repositories và seeds (nếu có dữ liệu mẫu) trong `src/db/`. Tuân thủ cross-DB UUID (`default=uuid.uuid4`) và mảng dữ liệu (`JSON`).
   - `frontend-dev` xây dựng types, API client, mock fixtures và UI components trong `src/frontend/` (hoàn toàn độc lập nhờ API Contract và Mock fixtures đã có trong `plan.md`).
 - **Wave 2 (Triển khai `backend-dev`)**:
   - Ngay khi `db-dev` hoàn thành models trong `src/db/`, gọi `backend-dev` trong `invoke_subagent`.
   - `backend-dev` viết schemas, services và API routes trong `src/backend/`, kết nối trực tiếp với models từ `src/db/` (`from db.models...`) thông qua `PYTHONPATH=src`.
+- **Quản lý Thư viện Mới (Dependencies Management trong Sandbox)**:
+  - Nếu Dev squad cần thêm package mới, không chạy `pip/npm install` trần mà chỉ cập nhật `pyproject.toml` (cho Python) hoặc `src/frontend/package.json` (cho Frontend) và gắn cờ `[DEPENDENCY REQUIRED]` để Orchestrator / User phối hợp nạp thư viện.
 
 ### Bước 3: Khởi chạy `qa-tester` & Vòng lặp Tự sửa lỗi (Self-Healing Loop)
 Gọi `invoke_subagent` với `TypeName: "qa-tester"`:

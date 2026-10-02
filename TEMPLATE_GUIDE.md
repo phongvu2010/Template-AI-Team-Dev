@@ -130,6 +130,12 @@ docker compose up -d postgres
 ```
 *(Lưu ý: Bộ test tự động mặc định sử dụng SQLite async in-memory, do đó bạn không nhất thiết phải bật Docker PostgreSQL chỉ để chạy test).*
 
+### 2.5. Nạp Dữ liệu Mẫu Khởi đầu (Seed Data — Tuỳ chọn)
+Khi đã khởi chạy PostgreSQL hoặc cần nạp dữ liệu mẫu ban đầu:
+```bash
+PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py
+```
+
 ---
 
 ## 5. Bước 3: Kiểm chứng Môi trường Day-0 (Smoke Verification)
@@ -142,7 +148,7 @@ Trước khi bắt đầu bất kỳ câu lệnh AI nào, hãy chạy lệnh ki�
 
 **Kết quả kỳ vọng**:
 * **Ruff**: `All checks passed!`
-* **Pytest**: `2 passed in 0.02s` (Pass cả endpoint `/health` và session async DB)
+* **Pytest**: `3 passed in 0.03s` (Pass cả endpoint `/health` và session async DB)
 * **Frontend Build**: `✓ Compiled successfully` (Next.js App Router render 4/4 static pages, typecheck sạch sẽ).
 
 ---
@@ -194,8 +200,9 @@ Tech Lead sẽ tự động điều phối:
 1. **Tuyệt đối không xoá thư mục `src/`**:
    - `src/` chứa các điểm neo (Anchor Points) và các file luật cục bộ [src/db/AGENTS.md](src/db/AGENTS.md), [src/backend/AGENTS.md](src/backend/AGENTS.md), [src/frontend/AGENTS.md](src/frontend/AGENTS.md).
    - Hãy giữ nguyên khung sườn khởi tạo này.
-2. **Cơ chế Auto-Discovery cho Models**:
+2. **Cơ chế Auto-Discovery cho Models & Seeds**:
    - Mọi model SQLAlchemy mới được tạo trong `src/db/models/<name>.py` sẽ **tự động** được nạp vào Alembic nhờ [src/db/models/__init__.py](src/db/models/__init__.py).
+   - Mọi file seed dữ liệu `src/db/seeds/<name>_seed.py` được tự động tìm và chạy bởi `src/db/seeds/runner.py`.
 3. **Luôn dùng Virtualenv Runner**:
    - Luôn sử dụng `.venv/bin/pytest` và `.venv/bin/ruff` thay vì gọi lệnh trần.
 4. **Phân vùng File Tuyệt đối (File Isolation)**:
@@ -206,4 +213,9 @@ Tech Lead sẽ tự động điều phối:
 5. **Phân biệt Alembic Migration và SQLite Testing**:
    - Bộ test tự động (`pytest`) sử dụng SQLite async in-memory khởi tạo qua `Base.metadata.create_all`, hoàn toàn độc lập và không phụ thuộc vào daemon PostgreSQL hay Alembic migrations.
    - Alembic chỉ quản lý schema cho PostgreSQL runtime thật (`docker compose up -d postgres`).
+6. **Cross-DB Type Safety (UUID & ARRAY)**:
+   - UUID khóa chính luôn dùng `from sqlalchemy import Uuid` kèm `default=uuid.uuid4` ở Python (hoặc kế thừa `UUIDPrimaryKeyMixin` từ `src/db/base.py`). Không dùng `server_default=text("gen_random_uuid()")`.
+   - Danh sách mảng (ví dụ `tags`) dùng `from sqlalchemy import JSON` (`default=list`) hoặc variant thay vì `ARRAY` trần để SQLite test không bị fail `CompileError`.
+7. **Quản lý Thư viện Mới trong Sandbox**:
+   - Trong sandbox cô lập, subagent không chạy lệnh `pip/npm install` trần. Chỉ cập nhật manifest (`pyproject.toml`, `package.json`) và ghi chú `[DEPENDENCY REQUIRED]` để Tech Lead Orchestrator / User cài đặt.
 

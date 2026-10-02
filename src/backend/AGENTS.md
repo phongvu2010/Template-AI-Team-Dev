@@ -16,3 +16,7 @@ Quy tắc bắt buộc khi bất kỳ Agent nào (`backend-dev`, `qa-tester`, `c
    - Không bao giờ trả về mật khẩu hash, secret key hoặc raw exception traceback trong response.
 4. **Type Annotations & Clean Code**:
    - Khai báo đầy đủ type hints cho tất cả hàm, tham số và giá trị trả về (chuẩn Python 3.11+ `list[str]`, `str | None`).
+5. **Quản lý Thư viện Mới (Dependencies Management trong Sandbox)**:
+   - Không tự ý chạy lệnh `pip install` trần trong sandbox để tránh lỗi network timeout.
+   - Khi cần thêm thư viện Python mới, cập nhật trực tiếp vào danh sách `dependencies` trong `pyproject.toml`.
+   - Báo cáo cho Tech Lead Orchestrator với thông báo: `[DEPENDENCY REQUIRED] <tên_package>` để phối hợp cài đặt.

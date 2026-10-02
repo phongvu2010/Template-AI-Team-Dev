@@ -1,8 +1,9 @@
 """Database Base & Mixins for SQLAlchemy 2.0 (PostgreSQL / Async)."""
 
+import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, MetaData, func
+from sqlalchemy import DateTime, MetaData, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 POSTGRES_INDEXES_NAMING_CONVENTION = {
@@ -18,6 +19,20 @@ class Base(DeclarativeBase):
     """Base class for all SQLAlchemy 2.0 declarative models."""
 
     metadata = MetaData(naming_convention=POSTGRES_INDEXES_NAMING_CONVENTION)
+
+
+class UUIDPrimaryKeyMixin:
+    """UUID Primary Key generator using Python-level uuid.uuid4.
+
+    Ensures 100% cross-DB compatibility between SQLite in-memory test suites
+    and PostgreSQL runtime without relying on engine-specific SQL functions.
+    """
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
 
 
 class TimestampMixin:

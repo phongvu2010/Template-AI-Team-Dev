@@ -11,7 +11,7 @@ Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-
 Template này được tối ưu hoá chuyên sâu cho các dự án **Full-Stack Web Applications Hiện Đại** sử dụng bộ đôi công nghệ **Python (FastAPI) + TypeScript (Next.js)** kết hợp cơ sở dữ liệu quan hệ **PostgreSQL**.
 
 ### 1. Hệ sinh thái Công nghệ Cố định (Fixed Stack Foundation)
-- **Database (`src/db/`)**: PostgreSQL 16+, SQLAlchemy 2.0 (Async), asyncpg, Alembic migrations tự động.
+- **Database (`src/db/`)**: PostgreSQL 16+, SQLAlchemy 2.0 (Async), asyncpg, Alembic migrations tự động. Tương thích cross-DB tuyệt đối giữa SQLite in-memory test và PostgreSQL runtime (UUID sinh qua Python `default=uuid.uuid4`, mảng dữ liệu qua `JSON`), tích hợp sẵn Seed Runner tại `src/db/seeds/`.
 - **Backend API (`src/backend/`)**: Python 3.11+, FastAPI (REST API), Pydantic v2 validation, Ruff linter, Pytest.
 - **Frontend Web (`src/frontend/`)**: React 19, Next.js (App Router), TypeScript (Strict), Tailwind CSS.
 - **Kiểm thử Cô lập**: SQLite async in-memory fallback giúp chạy toàn bộ test không cần cài PostgreSQL local.
@@ -113,7 +113,7 @@ AI Team Dev/
 │       ├── backend-fastapi/SKILL.md
 │       └── frontend-nextjs/SKILL.md
 ├── src/                                           # Thư mục mã nguồn thực thi tập trung
-│   ├── db/                                        # Models, session, repositories, migrations
+│   ├── db/                                        # Models, session, repositories, migrations, seeds
 │   ├── backend/                                   # FastAPI app, schemas, services, api routers, tests
 │   └── frontend/                                  # Next.js app router, components, lib api, types
 └── docs/

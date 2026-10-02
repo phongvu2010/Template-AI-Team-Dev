@@ -42,7 +42,7 @@ Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi
 
 Toàn bộ mã nguồn thực thi được tổ chức thống nhất trong thư mục `src/`:
 
-- **Database (`src/db/`)**: PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`, `Mapped`, `mapped_column`, `asyncpg`), Alembic. File `src/db/models/__init__.py` tích hợp sẵn auto-discovery toàn bộ models cho Alembic autogenerate.
+- **Database (`src/db/`)**: PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`, `Mapped`, `mapped_column`, `asyncpg`), Alembic. File `src/db/models/__init__.py` tích hợp sẵn auto-discovery toàn bộ models cho Alembic. Hỗ trợ cross-DB tuyệt đối giữa SQLite in-memory test và PostgreSQL runtime (UUID khóa chính sinh bằng Python `default=uuid.uuid4` hoặc kế thừa `UUIDPrimaryKeyMixin`, mảng dữ liệu dùng `JSON` chuẩn hoặc variant). Thư mục `src/db/seeds/` cung cấp kịch bản seed dữ liệu mẫu qua `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
 - **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), Linter `ruff` (.venv/bin/ruff), Test runner `pytest` (luôn dùng `.venv/bin/pytest`) + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ `PYTHONPATH=src`.
 - **Frontend (`src/frontend/`)**: Next.js (App Router), React 19, TypeScript (Strict mode), Tailwind CSS.
 - **Tài liệu & Handoff Artifacts (`docs/specs/<feature-slug>/`)**:
@@ -69,7 +69,7 @@ Khi người dùng yêu cầu xây dựng một tính năng mới, thay đổi h
 Sau khi `docs/specs/<feature-slug>/plan.md` hoàn tất:
 1. **Triển khai Wave 1 (Song song `db-dev` & `frontend-dev`)**:
    - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng một lệnh `invoke_subagent`.
-   - `db-dev` khởi tạo SQLAlchemy Models và Migrations trong `src/db/`.
+   - `db-dev` khởi tạo SQLAlchemy Models, Migrations và Seeds (nếu cần) trong `src/db/`.
    - `frontend-dev` triển khai TypeScript interfaces, API client và UI components trong `src/frontend/` (hoàn toàn độc lập dựa trên API Contract trong `plan.md`).
 2. **Triển khai Wave 2 (`backend-dev`)**:
    - Ngay sau khi `db-dev` hoàn tất models/repositories trong `src/db/`, gọi `backend-dev` trong `invoke_subagent`.
@@ -79,6 +79,12 @@ Sau khi `docs/specs/<feature-slug>/plan.md` hoàn tất:
    - `frontend-dev` chỉ ghi file trong `src/frontend/` (app routes, components, hooks, api clients, types).
    - `backend-dev` chỉ ghi file trong `src/backend/` (routers, schemas, services, dependencies).
    - Quy tắc này đảm bảo các subagent chạy song song (`Workspace: "inherit"`) không bao giờ ghi đè file của nhau.
+4. **Quy chuẩn Quản lý Thư viện Mới (Dependencies Management trong Sandbox)**:
+   - Trong môi trường sandbox cô lập không có kết nối mạng ngoại vi, các subagent **tuyệt đối không chạy lệnh `pip install` hoặc `npm install` trần**.
+   - Khi cần thêm thư viện mới:
+     - `db-dev` / `backend-dev`: Cập nhật trực tiếp danh sách `dependencies` trong `pyproject.toml`.
+     - `frontend-dev`: Cập nhật trực tiếp `dependencies` hoặc `devDependencies` trong `src/frontend/package.json`.
+     - Thông báo cho Orchestrator: `[DEPENDENCY REQUIRED] <tên_package>`. Orchestrator hoặc User sẽ chịu trách nhiệm cài đặt. Khi đóng gói ở Bước 5, các file manifest này sẽ tự động được commit cùng codebase.
 
 ### Bước 3: Giai đoạn Testing (`qa-tester`)
 Sau khi `backend-dev` và `frontend-dev` hoàn thành:

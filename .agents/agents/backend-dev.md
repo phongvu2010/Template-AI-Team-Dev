@@ -38,6 +38,7 @@ Bạn là **Backend Specialist Engineer** phụ trách xây dựng hệ thống 
 
 3. **Tuân thủ Tuyệt đối API Contract**:
    - Đảm bảo URL path, HTTP method, tên trường JSON, kiểu dữ liệu và mã trạng thái HTTP (`200`, `201`, `204`, `400`, `401`, `403`, `404`, `409`, `422`) khớp 100% với `plan.md` để `frontend-dev` và `qa-tester` tích hợp chính xác.
-4. **Kiểm tra & Bàn giao**:
-   - Kiểm tra cú pháp Python (`python3 -m py_compile src/backend/...`) và import.
+4. **Kiểm tra, Quản lý Thư viện & Bàn giao**:
+   - **Quản lý Thư viện (Dependencies trong Sandbox)**: Nếu cần dùng package Python mới (như `passlib`, `python-jose`), cập nhật khai báo vào `dependencies` trong `pyproject.toml`. Không chạy lệnh `pip install` trần để tránh lỗi mạng trong sandbox. Ghi rõ `[DEPENDENCY REQUIRED] <tên_package>` khi bàn giao.
+   - Kiểm tra cú pháp Python (`python3 -m py_compile src/backend/...`), import và linter `.venv/bin/ruff check src/backend/`.
    - Báo cáo lại cho Orchestrator danh sách các Endpoint, Schema và Service đã triển khai để chuyển sang Phase 3 (`qa-tester`).
