@@ -2,6 +2,8 @@
 
 Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-Agent** theo **Mô hình Ma trận (Matrix Architecture)**:
 
+> 🚀 **Hướng dẫn Dùng Template Cho Dự Án Mới**: Xem cẩm nang chi tiết tại [TEMPLATE_GUIDE.md](file:///Users/hunterdo/Documents/Python%20Project/AI%20Team%20Dev/TEMPLATE_GUIDE.md) để biết cách khởi tạo repo mới, cài đặt môi trường chỉ trong 2 phút và các câu lệnh mẫu.
+
 ```text
                                   ┌────────────────────────┐
                                   │      1. PLANNER        │
