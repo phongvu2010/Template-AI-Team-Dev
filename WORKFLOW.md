@@ -1,7 +1,7 @@
 # Cẩm Nang Quy Trình Làm Việc Multi-Agent Dev Team (SOP)
 ### Chu trình Lập trình Dự án Chuẩn từ Ý tưởng đến Bàn giao trên Antigravity 2.0
 
-Tài liệu này là **Quy trình Vận hành Chuẩn (Standard Operating Procedure - SOP)** dành cho **Product Owner / Tech Founder / Developer** điều phối hệ thống **Multi-Agent Dev Team** theo mô hình **Ma trận (Matrix Architecture)** kết hợp quy trình **2-Wave Execution** trên nền tảng **Antigravity 2.0**.
+Tài liệu này là **Quy trình Vận hành Chuẩn (Standard Operating Procedure - SOP)** dành cho **Product Owner / Tech Founder / Developer** điều phối hệ thống **Multi-Agent Dev Team** theo mô hình **Ma trận (Matrix Architecture)** kết hợp quy trình **2-Wave Execution** trên nền tảng **Antigravity 2.0**, giải quyết triệt để 4 trụ cột kỹ thuật: **Feedback Loop & Circuit Breaker**, **Data & API Contract Synchronization**, **CLI Execution Guardrails** và **Artifact Handover Schema**.
 
 ---
 
@@ -16,22 +16,24 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 ┌────────────────────────────────────────────────────────────────────────┐
 │ GIAI ĐOẠN 0: Tiếp nhận Ý tưởng & Định hình Phạm vi (Ideation & Scope)  │
 │ - Xác định Feature Slug (kebab-case)                                   │
-│ - Xác định Scope: Nghiệp vụ MVP vs Tính năng mở rộng                   │
+│ - Xác định Scope: Nghiệp vụ MVP (P0) vs Tính năng mở rộng (P1/P2)      │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GIAI ĐOẠN 1: Lập Kế hoạch Kiến trúc & Đặc tả Hợp đồng (`planner`)      │
+│ GIAI ĐOẠN 1: Thiết lập Hợp đồng Kỹ thuật & Kiến trúc (`planner`)       │
 │ - Xuất bản: docs/specs/<feature-slug>/plan.md                          │
-│   ├── Data Contract (PostgreSQL / SQLAlchemy 2.0 tại src/db/)          │
-│   ├── API Contract (OpenAPI REST specs tại src/backend/)               │
+│   ├── Metadata Header (YAML Frontmatter chuẩn hóa)                     │
+│   ├── Cross-Layer Data Contract Matrix (DB <-> Backend <-> Frontend)   │
+│   ├── REST API Contract (Casing chuẩn snake_case + Error Schemas)      │
 │   ├── UI Architecture (Next.js App Router 4 UI states tại src/frontend/)│
-│   └── Acceptance Criteria & Kịch bản Test cho qa-tester                │
+│   └── Acceptance Criteria & Test Matrix (AC-ID -> TC-ID)               │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ [Quality Gate 1: Duyệt plan.md]
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GIAI ĐOẠN 2: Thẩm định Thư viện & Công nghệ (Tech Provisioning)         │
+│ GIAI ĐOẠN 2: Thiết lập Rào Chắn Dòng Lệnh & Thư viện (Guardrails)      │
+│ - Áp dụng Role-based Command Whitelist & Blacklist nghiêm ngặt         │
 │ - Rà soát dependencies: pyproject.toml & src/frontend/package.json     │
 │ - Quy chuẩn Sandbox: Cắm cờ [DEPENDENCY REQUIRED], không chạy lệnh trần │
 │ - Smoke check Day-0: .venv/bin/ruff check src/ sạch sẽ                 │
@@ -65,49 +67,56 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 │ GIAI ĐOẠN 4: Kiểm thử Tự động & Vòng lặp Sửa lỗi (`qa-tester`)         │
 │ - 1. Linter: .venv/bin/ruff check src/                                 │
 │ - 2. DB & Backend Tests: PYTHONPATH=src .venv/bin/pytest -v            │
-│   (SQLite async in-memory fallback cô lập)                             │
+│   (SQLite async in-memory fallback cô lập + Contract Verification Test)│
 │ - 3. Frontend Typecheck: npm --prefix src/frontend run typecheck       │
 │ - Xuất bản: docs/specs/<feature-slug>/test-report.md                   │
 │                                                                        │
 │ ┌────────────────────────────────────────────────────────────────────┐ │
 │ │ [Vòng lặp Self-Healing] Nếu FAILED:                                │ │
-│ │ Tech Lead điều phối qua tin nhắn [SELF-HEALING ACTION REQUIRED]    │ │
-│ │ Dev Squad tương ứng sửa lỗi -> QA test lại (tối đa 3 vòng lặp)    │ │
+│ │ Tech Lead gửi tin nhắn: [SELF-HEALING ACTION REQUIRED]             │ │
+│ │ Dev Squad sửa lỗi -> Gửi phản hồi: [FIX-COMPLETED]                 │ │
+│ │ QA kiểm thử lại (Tối đa 3 vòng lặp -> Kích hoạt Circuit Breaker)   │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ [Quality Gate 2: Test PASSED 100%]
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │ GIAI ĐOẠN 5: Thẩm định Code, Tối ưu & Bảo mật (`code-reviewer`)        │
-│ - Token-Optimized Audit qua `git status` và `git diff`                 │
-│ - Kiểm tra: Khớp Contract, Bảo mật OWASP, N+1 Query, Typescript Any    │
+│ - Token-Optimized Audit qua `git status --short` và `git diff`         │
+│ - Quality Gate Scorecard: Contract Sync, OWASP, N+1 Query, A11y        │
 │ - Xuất bản: docs/specs/<feature-slug>/review-report.md                 │
-│   (Verdict: APPROVED hoặc CHANGES_REQUESTED)                           │
+│                                                                        │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │ [Vòng lặp Review Feedback] Nếu CHANGES_REQUESTED:                  │ │
+│ │ Tech Lead gửi tin nhắn: [REVIEW-FIX ACTION REQUIRED]               │ │
+│ │ Dev Squad sửa lỗi -> Gửi phản hồi: [FIX-COMPLETED]                 │ │
+│ │ QA chạy lại test -> Reviewer thẩm định lại (Tối đa 3 vòng lặp)     │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ [Quality Gate 3: Verdict APPROVED]
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │ GIAI ĐOẠN 6: Đóng gói, Git Commit & Bàn giao (Tech Lead Orchestrator)  │
-│ - git add src/ docs/specs/<feature-slug>/ pyproject.toml package.json  │
+│ - Kiểm tra git status --short & rà soát dependencies manifest         │
 │ - Tạo Conventional Commit: feat(<feature-slug>): ...                   │
-│ - Báo cáo nghiệm thu & Hướng dẫn User trải nghiệm tính năng            │
+│ - Bàn giao báo cáo nghiệm thu & Hướng dẫn User trải nghiệm            │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Bảng Phân Công Trách Nhiệm (RACI Matrix)
+## 2. Bảng Phân Công Trách Nhiệm & Rào Chắn Lệnh (RACI & Guardrails Matrix)
 
-| Vai trò / Tác tử | Nhận diện Subagent | Thư mục quyền sở hữu | Nhiệm vụ chính trong chu trình |
-| :--- | :--- | :--- | :--- |
-| **Product Owner** | User (Con người) | Toàn dự án | Định nghĩa bài toán, nghiệm thu `plan.md` và kiểm chứng sản phẩm. |
-| **Tech Lead** | Antigravity Main Agent | Toàn dự án | Điều phối các Phase, gửi tin nhắn Self-Healing, đóng gói Git commit. |
-| **Architect** | [`planner`](.agents/agents/planner.md) | `docs/specs/<slug>/` | Xuất bản `plan.md` (Data Contract + API Contract + UI Spec + Test Cases). |
-| **DB Specialist** | [`db-dev`](.agents/agents/db-dev.md) | `src/db/` | Xây dựng SQLAlchemy 2.0 models, Alembic migrations, Repositories, Seeds. |
-| **Frontend Dev** | [`frontend-dev`](.agents/agents/frontend-dev.md) | `src/frontend/` | Xây dựng Next.js UI, TypeScript interfaces, API clients, Mock fixtures. |
-| **Backend Dev** | [`backend-dev`](.agents/agents/backend-dev.md) | `src/backend/` | Xây dựng Pydantic v2 schemas, Services nghiệp vụ, REST API endpoints. |
-| **QA Specialist** | [`qa-tester`](.agents/agents/qa-tester.md) | `docs/specs/`, `src/*/tests/` | Viết automated tests, chạy linter, xuất `test-report.md`, cung cấp trace lỗi. |
-| **Code Reviewer** | [`code-reviewer`](.agents/agents/code-reviewer.md) | `docs/specs/` | Audit `git diff`, kiểm tra N+1, bảo mật, code quality, ra verdict `APPROVED`. |
+| Vai trò / Tác tử | Nhận diện Subagent | Thư mục sở hữu (Ownership) | Lệnh được phép (Whitelist) | Lệnh cấm (Blacklist) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Product Owner** | User (Con người) | Toàn dự án | Mọi lệnh hệ thống | - |
+| **Tech Lead** | Antigravity Main Agent | Toàn dự án | Điều phối subagents, `git status`, `git add`, `git commit` | Cấm `git reset --hard`, `git push --force` |
+| **Architect** | [`planner`](.agents/agents/planner.md) | `docs/specs/<slug>/` | Chỉ đọc/ghi file (`view_file`, `write_to_file`) | Cấm chạy shell commands làm đổi code |
+| **DB Specialist** | [`db-dev`](.agents/agents/db-dev.md) | `src/db/` | `.venv/bin/ruff check src/db/`, `python3 -m py_compile`, `alembic`, `runner.py` | Cấm `rm -rf`, `dropdb`, `pip install`, ghi file ngoài `src/db/` |
+| **Frontend Dev** | [`frontend-dev`](.agents/agents/frontend-dev.md) | `src/frontend/` | `npm --prefix src/frontend run typecheck`, `run lint`, `run build` | Cấm `npm install` trần, ghi file ngoài `src/frontend/` |
+| **Backend Dev** | [`backend-dev`](.agents/agents/backend-dev.md) | `src/backend/` | `.venv/bin/ruff check src/backend/`, `python3 -m py_compile` | Cấm `pip install` trần, ghi file ngoài `src/backend/` |
+| **QA Specialist** | [`qa-tester`](.agents/agents/qa-tester.md) | `docs/specs/`, `tests/` | `.venv/bin/ruff check src/`, `PYTHONPATH=src .venv/bin/pytest`, `run typecheck` | Cấm tự ý sửa code nghiệp vụ trong `src/` |
+| **Code Reviewer** | [`code-reviewer`](.agents/agents/code-reviewer.md) | `docs/specs/` | `git status --short`, `git diff --stat`, `git diff` | Cấm chạy lệnh sửa code hoặc thay đổi git |
 
 ---
 
@@ -116,134 +125,96 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 ---
 
 ### Giai đoạn 0: Tiếp nhận Ý tưởng & Định hình Phạm vi (Ideation & Scope)
-
-* **Mục tiêu**: Biến mong muốn trừu tượng của người dùng thành một bài toán kỹ thuật có phạm vi rõ ràng.
-* **Các bước thực hiện**:
-  1. **Đặt Feature Slug**: Đặt định danh ngắn gọn dạng `kebab-case` (ví dụ: `auth-system`, `inventory-tracking`, `billing-subscription`). Slug này sẽ là tên thư mục chứa specs: `docs/specs/<feature-slug>/`.
-  2. **Xác định 3 trụ cột thông tin**:
-     - *Nghiệp vụ (Business Flow)*: Ai là người dùng? Luồng thao tác chính là gì?
-     - *Dữ liệu (Data Needs)*: Cần lưu các thực thể nào? Các trường trọng tâm là gì?
-     - *Giao diện (UI Expectations)*: Cần màn hình danh sách, form nhập, modal popup hay biểu đồ báo cáo?
-  3. **Phân ranh giới MVP**: Ghi chú rõ các tính năng "bắt buộc có ngay" (P0) và tính năng "để giai đoạn tiếp theo" (P1/P2).
+- **Đặt Feature Slug**: Định danh ngắn gọn dạng `kebab-case` (ví dụ: `auth-system`, `inventory-tracking`, `order-management`). Slug này sẽ là tên thư mục chứa hồ sơ: `docs/specs/<feature-slug>/`.
+- **Phân ranh giới MVP**: Ghi rõ các tính năng P0 (bắt buộc có ngay) và P1/P2 (mở rộng sau này).
 
 ---
 
-### Giai đoạn 1: Lập Kế hoạch Kiến trúc & Đặc tả Hợp đồng (`planner`)
+### Giai đoạn 1: Thiết lập Hợp đồng Kỹ thuật & Kiến trúc (`planner`)
+- Tech Lead kích hoạt `planner` (tham chiếu [plan-template.md](.agents/skills/team-pipeline/resources/plan-template.md)).
+- `planner` khảo sát hiện trạng `src/` và xuất bản `docs/specs/<feature-slug>/plan.md` chứa:
+  1. **Header Metadata**: YAML frontmatter (`feature_slug`, `version`, `status`, `iteration`).
+  2. **Cross-Layer Data Contract Matrix**: Bảng ánh xạ 3 tầng đồng bộ 100% tên trường (`snake_case`), kiểu dữ liệu giữa SQLAlchemy, Pydantic v2 và TypeScript Strict.
+  3. **REST API Contract**: Endpoints, HTTP methods, Request/Response JSON và chuẩn hóa thông báo lỗi `{"detail": "..."}`.
+  4. **Wave 1 Mock Fixtures**: Dữ liệu mẫu tại `src/frontend/src/lib/api/mocks/<resource>.ts`.
+  5. **UI Architecture**: Next.js App Router và xử lý đủ **4 trạng thái UI** (`Loading`, `Error`, `Empty`, `Success`).
+  6. **Ma trận Truy xuất Yêu cầu**: Liên kết trực tiếp giữa Tiêu chí Nghiệm thu (`AC-ID`) và Kịch bản Test (`TC-ID`).
 
-* **Mục tiêu**: Tạo **Single Source of Truth** tại `docs/specs/<feature-slug>/plan.md`. Không viết code khi chưa có file này.
-* **Các bước thực hiện**:
-  1. Tech Lead kích hoạt `planner` (đọc mẫu [plan-template.md](.agents/skills/team-pipeline/resources/plan-template.md)).
-  2. `planner` khảo sát hiện trạng thư mục `src/db/`, `src/backend/`, `src/frontend/` để tận dụng code đã có.
-  3. `planner` thiết lập **Data Contract**:
-     - Tên bảng, kiểu cột, khoá chính UUID (`UUIDPrimaryKeyMixin`), khoá ngoại, indexes.
-     - Quy tắc quan hệ (`relationship`), kiểu nạp (`selectinload`).
-  4. `planner` thiết lập **API Contract**:
-     - Endpoint URL (ví dụ: `POST /api/v1/orders`), HTTP Method, Headers, Query Params.
-     - Request Body JSON và Response Payload JSON đầy đủ tên trường và kiểu dữ liệu.
-     - Mã trạng thái HTTP chuẩn: `200`, `201`, `204`, `400`, `401`, `404`, `422`.
-  5. `planner` thiết lập **UI Architecture**:
-     - Cấu trúc trang Next.js App Router (Server Component vs Client Component).
-     - Giao diện bắt buộc đủ **4 trạng thái**: `Loading`, `Error`, `Empty`, `Success`.
-  6. `planner` thiết lập **Acceptance Criteria & Test Cases** cho QA.
-
-> 🛡️ **Quality Gate 1**: User/Tech Lead xem xét `plan.md`. Nếu cần thay đổi nghiệp vụ, chỉnh sửa ngay tại đây trước khi bắt đầu lập trình.
+> 🛡️ **Quality Gate 1**: Duyệt `plan.md`. Không viết code khi chưa có hợp đồng chuẩn này.
 
 ---
 
-### Giai đoạn 2: Thẩm định Thư viện & Công nghệ (Tech Provisioning)
-
-* **Mục tiêu**: Rà soát các thư viện phát sinh và chuẩn bị môi trường an toàn trong sandbox cô lập.
-* **Các bước thực hiện**:
-  1. **Rà soát Thư viện**:
-     - Backend/DB ([pyproject.toml](pyproject.toml)): Thư viện mã hóa mật khẩu (`passlib[bcrypt]`), JWT (`python-jose`), HTTP client ngoài (`httpx`).
-     - Frontend (`src/frontend/package.json`): Icons (`lucide-react`), validation (`zod`), components hỗ trợ.
-  2. **Quy tắc Quản lý Thư viện trong Sandbox**:
-     - Subagents **tuyệt đối không chạy lệnh `pip install` hoặc `npm install` trần** khi không có internet.
-     - Cập nhật trực tiếp vào file manifest (`pyproject.toml` hoặc `src/frontend/package.json`).
-     - Gắn cờ thông báo `[DEPENDENCY REQUIRED] <tên_gói>` để User/Orchestrator cài đặt.
-  3. **Kiểm tra Day-0**: Chạy `.venv/bin/ruff check src/` để chắc chắn không có lỗi cú pháp tồn dư.
+### Giai đoạn 2: Thiết lập Rào Chắn Dòng Lệnh & Thư viện (Guardrails)
+- Rà soát các thư viện phát sinh trong `pyproject.toml` và `src/frontend/package.json`.
+- Áp dụng quy chuẩn Sandbox: Không chạy `pip/npm install` trần khi không có mạng; cập nhật manifest và cắm cờ `[DEPENDENCY REQUIRED]`.
+- Chạy smoke check Day-0: `.venv/bin/ruff check src/` để chắc chắn không có lỗi cú pháp tồn dư.
 
 ---
 
 ### Giai đoạn 3: Triển khai Lập trình Đợt kép (2-Wave Execution)
-
-* **Mục tiêu**: Tối ưu hóa thời gian bằng cách lập trình song song mà không gây xung đột phụ thuộc hay lỗi ghi đè file.
-* **Nguyên tắc phân vùng file (Strict File Isolation)**:
+- **Quy tắc phân vùng file tuyệt đối (File Ownership Isolation)**:
   - `db-dev`: Chỉ ghi trong `src/db/`.
   - `frontend-dev`: Chỉ ghi trong `src/frontend/`.
   - `backend-dev`: Chỉ ghi trong `src/backend/`.
 
-#### Đợt 1 (Wave 1 - Song song):
-* **Nhánh 1A - Database Specialist (`db-dev` tại `src/db/`)**:
-  - Tạo model trong `src/db/models/<name>.py` (tự động nạp qua auto-discovery `src/db/models/__init__.py`).
-  - Kế thừa `UUIDPrimaryKeyMixin` (`default=uuid.uuid4`) và `TimestampMixin`.
-  - Mảng dữ liệu dùng `JSON` chuẩn (hoặc variant) để SQLite test không bị fail `CompileError`.
+#### Đợt 1 (Wave 1 - Triển khai song song):
+- **Nhánh 1A - Database Specialist (`db-dev` tại `src/db/`)**:
+  - Tạo model trong `src/db/models/<name>.py` (kế thừa `UUIDPrimaryKeyMixin` và `TimestampMixin`).
+  - Mảng dữ liệu dùng `JSON` (kèm variant PG nếu cần) để SQLite test không bị lỗi.
   - Viết repository async chống N+1 bằng `selectinload()`.
-  - Tạo migration Alembic và kịch bản Seed Data tại `src/db/seeds/<name>_seed.py`.
-* **Nhánh 1B - Frontend Specialist (`frontend-dev` tại `src/frontend/`)**:
-  - Tạo TypeScript types tại `src/frontend/src/types/` khớp 100% với API Contract trong `plan.md`. Không dùng `any`.
+  - Tạo migration Alembic và seed data mẫu tại `src/db/seeds/<name>_seed.py`.
+- **Nhánh 1B - Frontend Specialist (`frontend-dev` tại `src/frontend/`)**:
+  - Tạo TypeScript types tại `src/frontend/src/types/` khớp 100% với Data Contract Matrix (`snake_case`, 0 `any`).
   - Tạo mock fixtures tại `src/frontend/src/lib/api/mocks/` hỗ trợ cờ `NEXT_PUBLIC_USE_MOCKS=true`.
-  - Xây dựng UI Components & Pages Next.js xử lý trọn vẹn 4 trạng thái: Loading, Error, Empty, Success.
+  - Xây dựng UI components & pages Next.js xử lý trọn vẹn 4 trạng thái: Loading, Error, Empty, Success.
   - Kiểm tra kiểu: `npm --prefix src/frontend run typecheck`.
 
 #### Đợt 2 (Wave 2 - Kết nối Backend):
-* **Backend Specialist (`backend-dev` tại `src/backend/`)**:
+- **Backend Specialist (`backend-dev` tại `src/backend/`)**:
   - Kích hoạt ngay sau khi `db-dev` hoàn thành models.
   - Viết Pydantic v2 schemas tại `src/backend/app/schemas/` (`ConfigDict(from_attributes=True)`, giới hạn `max_length`, `ge`/`le`).
   - Viết Services xử lý business logic và transaction tại `src/backend/app/services/`.
   - Viết API routers tại `src/backend/app/api/v1/endpoints/` kết nối models trực tiếp từ `src/db/` thông qua `PYTHONPATH=src`.
-  - Cắm router vào tập trung tại `src/backend/app/api/v1/router.py`.
+  - Cắm router vào `api_router` tập trung tại `src/backend/app/api/v1/router.py`.
 
 ---
 
 ### Giai đoạn 4: Kiểm thử Tự động & Vòng lặp Sửa lỗi (`qa-tester`)
+- `qa-tester` đối chiếu `plan.md` và viết test tự động tại `src/backend/tests/test_<feature>.py`.
+- Thực thi chuỗi lệnh kiểm tra:
+  ```bash
+  # 1. Linter & Code Standards
+  .venv/bin/ruff check src/
 
-* **Mục tiêu**: Đạt 100% tỷ lệ vượt qua bài test trước khi chuyển sang bước review.
-* **Các bước thực hiện**:
-  1. `qa-tester` đối chiếu `plan.md` và viết test tự động tại `src/backend/tests/test_<feature>.py`.
-  2. Thực thi chuỗi lệnh kiểm tra:
-     ```bash
-     # 1. Linter & Code Standards
-     .venv/bin/ruff check src/
+  # 2. Backend & DB Testing (SQLite in-memory fallback + Contract Verification)
+  PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v
 
-     # 2. Backend & DB Testing (SQLite async in-memory fallback)
-     PYTHONPATH=src .venv/bin/pytest src/backend/tests -v
-
-     # 3. Frontend TypeScript Integrity
-     npm --prefix src/frontend run typecheck
-     ```
-  3. Xuất báo cáo tại `docs/specs/<feature-slug>/test-report.md`.
-  4. **Giao thức Self-Healing (Tự sửa lỗi)**:
-     - Nếu phát hiện bài test `FAILED`, `qa-tester` không tự sửa code nghiệp vụ mà trích xuất chi tiết lỗi vào báo cáo.
-     - Tech Lead gửi tin nhắn `send_message` theo mẫu chuẩn:
-       ```text
-       [SELF-HEALING ACTION REQUIRED]
-       - Feature: <feature-slug>
-       - Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
-       - Target File & Line: <đường_dẫn_file>#L...
-       - Failed Test: <tên hàm test hoặc ID>
-       - Diagnostics & Traceback: <nội dung lỗi>
-       - Instructions: Phân tích nguyên nhân và khắc phục. Chỉ sửa trong thư mục phân quyền.
-       ```
-     - Sau khi Dev Agent báo xong, `qa-tester` chạy lại bài test (tối đa 3 vòng lặp).
+  # 3. Frontend TypeScript Integrity
+  npm --prefix src/frontend run typecheck
+  ```
+- Xuất báo cáo tại `docs/specs/<feature-slug>/test-report.md` (kèm Chỉ số Metrics và Structured Bug Tickets).
+- **Vòng lặp Self-Healing (Tự sửa lỗi)**:
+  - Nếu `overall_status: FAILED`:
+    - Tech Lead gửi tin nhắn `send_message` theo mẫu `[SELF-HEALING ACTION REQUIRED]` cho Dev Squad tương ứng.
+    - Dev Squad sửa lỗi trong thư mục phân quyền, chạy smoke test và gửi phản hồi `[FIX-COMPLETED]`.
+    - `qa-tester` chạy lại bài test. Bộ đếm `iteration` tăng thêm 1.
+    - **Cơ chế Ngắt Mạch (Circuit Breaker)**: Tối đa **3 vòng lặp**. Nếu quá 3 lần vẫn lỗi, kích hoạt Giao thức Báo cáo Leo thang cho User.
 
 > 🛡️ **Quality Gate 2**: Toàn bộ test suite phải đạt trạng thái `PASSED 100%`.
 
 ---
 
 ### Giai đoạn 5: Thẩm định Code, Tối ưu & Bảo mật (`code-reviewer`)
-
-* **Mục tiêu**: Đánh giá độc lập về kiến trúc, bảo mật và hiệu năng, ngăn chặn nợ kỹ thuật (technical debt).
-* **Chiến lược Token-Optimized Audit**:
-  - Không đọc toàn bộ codebase.
-  - Sử dụng `git status --short` và `git diff` để tập trung phân tích chính xác những dòng code vừa thay đổi trong commit/working tree.
-* **Bảng kiểm định (Audit Checklist)**:
-  1. *Khớp Hợp đồng*: Tên trường JSON giữa DB, FastAPI và Next.js có bị lệch không (`camelCase` vs `snake_case`)?
-  2. *Database*: Có truy vấn N+1 không? Có thiếu index cho trường lọc/tìm kiếm không?
-  3. *Bảo mật*: Đã chặn SQL Injection, XSS chưa? Có lộ mật khẩu hash, API token hay stack trace nội bộ ra client không?
-  4. *Frontend*: Có ép kiểu `any` không? Component có dọn dẹp side-effect không? Semantic HTML và ARIA có đạt chuẩn không?
-* **Đầu ra**: Xuất file `docs/specs/<feature-slug>/review-report.md`.
-  - Nếu `CHANGES_REQUESTED`: Gửi yêu cầu Dev Squad khắc phục các lỗi `[CRITICAL]` hoặc `[MAJOR]`.
+- **Chiến lược Token-Optimized Audit**:
+  - Chạy `git status --short` và `git diff` để tập trung phân tích chính xác những dòng code vừa thay đổi trong commit/working tree.
+- **Bảng Cổng Chất Lượng (Quality Gate Scorecard)**:
+  1. *Khớp Hợp đồng*: Tên trường JSON và kiểu dữ liệu có khớp 100% với Data Contract Matrix trong `plan.md` không?
+  2. *Database*: Có truy vấn N+1 không? Có thiếu index cho trường lọc không?
+  3. *Bảo mật*: Pydantic v2 validation đã giới hạn độ dài chưa? Có lộ secrets ra response không?
+  4. *Frontend*: Có ép kiểu `any` không? Xử lý đủ 4 trạng thái UI và A11y chưa?
+  5. *Độ phủ Kiểm thử*: 100% test cases đã pass chưa?
+- **Xuất bản báo cáo**: `docs/specs/<feature-slug>/review-report.md`.
+  - Nếu `CHANGES_REQUESTED`: Tech Lead gửi `[REVIEW-FIX ACTION REQUIRED]`. Dev Squad sửa và gửi `[FIX-COMPLETED]`. QA re-test để chống lỗi hồi quy, Reviewer re-review (tối đa 3 vòng lặp).
   - Nếu `APPROVED`: Chuyển sang Giai đoạn 6.
 
 > 🛡️ **Quality Gate 3**: Verdict bắt buộc phải đạt `APPROVED`.
@@ -251,61 +222,74 @@ Mọi tính năng mới hoặc phân hệ nghiệp vụ đều vận hành qua c
 ---
 
 ### Giai đoạn 6: Đóng gói, Git Commit & Bàn giao (Tech Lead Orchestrator)
+1. Rà soát `git status --short` kiểm tra toàn bộ file mới và sửa đổi trong `src/`, `docs/specs/<feature-slug>/`, `pyproject.toml`, `package.json`.
+2. Thực thi commit chuẩn hóa (Conventional Commits):
+   ```bash
+   git add src/ docs/specs/<feature-slug>/
+   git add pyproject.toml src/frontend/package*.json 2>/dev/null || true
+   git commit -m "feat(<feature-slug>): implement <tên tính năng ngắn gọn>
 
-* **Mục tiêu**: Đóng gói thành quả lao động theo chuẩn Conventional Commits và bàn giao cho User.
-* **Các bước thực hiện**:
-  1. Kiểm tra trạng thái Git:
-     ```bash
-     git status --short
-     ```
-  2. Chạy commit tự động:
-     ```bash
-     git add src/ docs/specs/<feature-slug>/
-     git add pyproject.toml src/frontend/package*.json 2>/dev/null || true
-     git commit -m "feat(<feature-slug>): implement <tên tính năng ngắn gọn>
-
-     - DB: add models, repositories & migrations in src/db/
-     - Backend: implement schemas, services & routers in src/backend/
-     - Frontend: build UI components, types & mock fixtures in src/frontend/
-     - Testing & Review: 100% test passed, approved by reviewer
-     - Specs: docs/specs/<feature-slug>/plan.md"
-     ```
-  3. Bàn giao cho User: Cung cấp Commit Hash, danh sách files đã tạo, đường dẫn tài liệu trong `docs/specs/<feature-slug>/` và hướng dẫn chạy thử nghiệm trực tiếp trên trình duyệt.
+   - DB: add SQLAlchemy 2.0 models & migrations in src/db/
+   - Backend: implement FastAPI schemas, services & endpoints in src/backend/
+   - Frontend: build Next.js UI components & typed API client in src/frontend/
+   - Quality: 100% automated tests passed, code review approved
+   - Specs: docs/specs/<feature-slug>/plan.md"
+   ```
+3. Bàn giao cho User: Cung cấp Commit Hash, danh sách files, tài liệu trong `docs/specs/<feature-slug>/` và hướng dẫn kiểm chứng tính năng.
 
 ---
 
-## 4. Bộ Mẫu Câu Lệnh (Prompt Templates) Sẵn Dùng Cho User
+## 4. Bộ Mẫu Thông Điệp Điều Phối Nội Bộ (Standard Dispatch Protocol)
 
-Người dùng (Product Owner) chỉ cần sao chép các mẫu câu lệnh dưới đây và nhập vào chat Antigravity:
-
-### Mẫu 1: Chạy Full-Flow (Toàn bộ 7 Giai đoạn Tự Động)
+### Mẫu 1: Gửi từ Tech Lead khi QA FAILED (`[SELF-HEALING ACTION REQUIRED]`)
 ```text
-Hãy phát triển tính năng [Tên tính năng] (slug: [feature-slug]) theo quy trình Multi-Agent Dev Team:
-- Nghiệp vụ: [Mô tả chi tiết mục tiêu, luồng thao tác của người dùng]
-- Cơ sở dữ liệu: [Bảng cần tạo, các cột chính, quan hệ khoá ngoại nếu có]
-- API REST: [Các endpoints CRUD, phân trang, lọc hoặc tính toán cần có]
-- Giao diện Next.js: [Màn hình danh sách, form tạo mới, modal, trạng thái UX]
-Hãy bắt đầu với Phase 1 Planning và điều phối các tác tử theo đúng quy trình 2-Wave!
+[SELF-HEALING ACTION REQUIRED]
+- Feature: <feature-slug>
+- Iteration: <iteration_number> / 3
+- Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
+- Target File & Line: <đường_dẫn_file>#L...
+- Failed Test ID: <mã test case hoặc tên hàm test>
+- Diagnostics & Traceback:
+  <dán nội dung traceback hoặc lỗi chi tiết từ Mục 4 test-report.md>
+- Reproduction Command: <lệnh chạy lại để tái hiện lỗi>
+- Instructions: Phân tích nguyên nhân và khắc phục triệt để. TUYỆT ĐỐI chỉ chỉnh sửa trong thư mục được phân quyền của bạn. Sau khi hoàn tất và smoke test sạch sẽ, gửi báo cáo [FIX-COMPLETED] để tiến hành kiểm thử lại.
 ```
 
-### Mẫu 2: Điều Phối Tác Tử Chuyên Biệt (Direct Squad Invocation)
-* **Khi chỉ cần thiết kế**:
-  > *"Nhờ `planner` phân tích và lập bản thiết kế `plan.md` cho phân hệ [Tên phân hệ]."*
-* **Khi cần sửa Database**:
-  > *"Nhờ `db-dev` thêm cột `avatar_url` vào bảng `users` trong `src/db/` và tạo migration Alembic."*
-* **Khi cần viết thêm API**:
-  > *"Nhờ `backend-dev` tạo thêm endpoint lọc đơn hàng theo trạng thái tại `src/backend/`."*
-* **Khi cần làm giao diện**:
-  > *"Nhờ `frontend-dev` thiết kế component OrderStatusBadge xử lý đủ 4 trạng thái tại `src/frontend/`."*
-* **Khi cần kiểm thử**:
-  > *"Nhờ `qa-tester` chạy lint ruff và toàn bộ test suite pytest xem có lỗi nào không."*
-* **Khi cần review bảo mật**:
-  > *"Nhờ `code-reviewer` audit các thay đổi mới qua git diff và xuất review-report.md."*
-
-### Mẫu 3: Sửa Lỗi Khẩn Cấp (Bugfix / Self-Healing Handoff)
+### Mẫu 2: Gửi từ Tech Lead khi Review CHANGES_REQUESTED (`[REVIEW-FIX ACTION REQUIRED]`)
 ```text
-Tôi phát hiện lỗi sau khi chạy thực tế: [Mô tả lỗi hoặc dán log exception].
-Nhờ Tech Lead điều phối Dev Squad tương ứng phân tích nguyên nhân tại src/, khắc phục triệt để và nhờ QA kiểm thử lại nhé!
+[REVIEW-FIX ACTION REQUIRED]
+- Feature: <feature-slug>
+- Iteration: <iteration_number> / 3
+- Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
+- Finding ID: <REV-01, ...>
+- Severity: [CRITICAL] | [MAJOR]
+- Target File & Line: <đường_dẫn_file>#L...
+- Issue Description & Diff:
+  <trích xuất mô tả vi phạm và code diff từ Mục 3 review-report.md>
+- Remediation Guidance: <hướng dẫn sửa đổi của reviewer>
+- Instructions: Khắc phục đúng các điểm vi phạm trên trong thư mục phân quyền. Chạy smoke test và gửi báo cáo [FIX-COMPLETED] khi hoàn tất.
+```
+
+### Mẫu 3: Gửi từ Dev Squad khi Hoàn Tất Sửa Lỗi (`[FIX-COMPLETED]`)
+```text
+[FIX-COMPLETED]
+- Feature: <feature-slug>
+- Iteration: <iteration_number>
+- Target Agent: <db-dev | backend-dev | frontend-dev>
+- Modified Files: <danh sách files đã sửa>
+- Resolved Bug/Finding IDs: <BUG-01, REV-01, ...>
+- Summary of Fix: <tóm tắt ngắn gọn giải pháp khắc phục và kết quả smoke test cục bộ>
+```
+
+### Mẫu 4: Báo Cáo Leo Thang Khi Kích Hoạt Circuit Breaker (`[CIRCUIT BREAKER ESCALATION]`)
+```text
+[CIRCUIT BREAKER ESCALATION]
+- Feature: <feature-slug>
+- Status: PAUSED_FOR_HUMAN_INTERVENTION
+- Iterations Executed: 3 / 3
+- Root Cause Summary: <tóm tắt lý do hệ thống không tự khắc phục được sau 3 lần lặp>
+- Blocking Issues: <danh sách các bài test hoặc findings còn tắc nghẽn>
+- Proposed Solutions: <đề xuất giải pháp cho PO / User xem xét can thiệp>
 ```
 
 ---
@@ -314,7 +298,8 @@ Nhờ Tech Lead điều phối Dev Squad tương ứng phân tích nguyên nhân
 
 Dùng bảng này để nghiệm thu sản phẩm sau mỗi tính năng:
 
-- [ ] `docs/specs/<feature-slug>/plan.md` có đầy đủ Data Contract, API Contract và UI Spec.
+- [ ] `docs/specs/<feature-slug>/plan.md` có đầy đủ Metadata, Data Contract Matrix, API Spec và UI Spec.
+- [ ] Toàn bộ API payload và Pydantic schemas sử dụng thống nhất chuẩn `snake_case`.
 - [ ] Model trong `src/db/models/` kế thừa `UUIDPrimaryKeyMixin` và `TimestampMixin`.
 - [ ] Không có truy vấn N+1 (`selectinload` được dùng đầy đủ cho relationships).
 - [ ] Endpoint FastAPI có Pydantic v2 validation giới hạn độ dài chuỗi và khoảng giá trị số.
@@ -347,4 +332,4 @@ Dùng bảng này để nghiệm thu sản phẩm sau mỗi tính năng:
 
 ### Vấn đề 4: Sandbox không có internet khi subagent chạy `npm/pip install`
 * **Nguyên nhân**: Môi trường sandbox được cô lập để bảo mật.
-* **Cách khắc phục**: Không cho agent chạy lệnh cài đặt trần. Cập nhật tên thư viện vào `pyproject.toml` hoặc `src/frontend/package.json`, sau đó thoát sandbox hoặc cài đặt thủ công ở terminal máy chủ.
+* **Cách khắc phục**: Tuyệt đối không cho agent chạy lệnh cài đặt trần. Cập nhật tên thư viện vào `pyproject.toml` hoặc `src/frontend/package.json` và gắn cờ `[DEPENDENCY REQUIRED]`.

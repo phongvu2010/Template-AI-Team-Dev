@@ -1,22 +1,60 @@
-# Backend Layer Rules (`backend/AGENTS.md`)
+# Backend Layer Rules (`src/backend/AGENTS.md`)
 
-Quy tắc bắt buộc khi bất kỳ Agent nào (`backend-dev`, `qa-tester`, `code-reviewer`) thao tác trong thư mục `backend/`:
+Quy tắc bắt buộc khi bất kỳ Agent nào (`backend-dev`, `qa-tester`, `code-reviewer`) thao tác trong thư mục `src/backend/`:
 
-1. **Kiến trúc Phân lớp Rõ ràng (Router -> Service -> DB Repository)**:
-   - `app/core/config.py`: Quản lý cấu hình tập trung (`settings = Settings()`, kế thừa `BaseSettings` của `pydantic-settings`), nạp biến môi trường (`.env`), CORS origins, tiền tố API.
-   - `app/api/v1/endpoints/`: Định nghĩa router theo từng resource, chỉ xử lý HTTP routing, dependency injection (`Depends`), status code và response model.
-   - `app/api/v1/router.py`: Cắm các router con vào `api_router` tập trung đã được mount vào `main.py` tại `/api/v1`.
-   - `app/schemas/`: Chỉ sử dụng **Pydantic v2** (`BaseModel`, `Field`, `ConfigDict(from_attributes=True)`, `.model_dump()`, `.model_validate()`). Không dùng `.dict()` hoặc `class Config: orm_mode = True`.
-   - `app/services/`: Xử lý toàn bộ logic nghiệp vụ, kiểm tra quyền/điều kiện và quản lý transaction (`await session.commit()`).
+---
 
-2. **Tuân thủ Tuyệt đối API Contract**:
-   - Đường dẫn URL, HTTP Method, Query Params, Request/Response JSON và HTTP Status Code phải khớp 100% với mục **API Contract** trong `docs/specs/<feature-slug>/plan.md`.
-3. **Bảo mật & Xác thực Dữ liệu**:
-   - Mọi trường chuỗi trong Pydantic Request Schema phải giới hạn `min_length` / `max_length`; mọi trường số phải có `ge` / `le` hợp lý.
-   - Không bao giờ trả về mật khẩu hash, secret key hoặc raw exception traceback trong response.
-4. **Type Annotations & Clean Code**:
-   - Khai báo đầy đủ type hints cho tất cả hàm, tham số và giá trị trả về (chuẩn Python 3.11+ `list[str]`, `str | None`).
-5. **Quản lý Thư viện Mới (Dependencies Management trong Sandbox)**:
-   - Không tự ý chạy lệnh `pip install` trần trong sandbox để tránh lỗi network timeout.
-   - Khi cần thêm thư viện Python mới, cập nhật trực tiếp vào danh sách `dependencies` trong `pyproject.toml`.
-   - Báo cáo cho Tech Lead Orchestrator với thông báo: `[DEPENDENCY REQUIRED] <tên_package>` để phối hợp cài đặt.
+## 1. Rào Chắn An Toàn Dòng Lệnh & Phân Quyền (CLI Guardrails)
+- **Quyền sở hữu File**: Tác tử `backend-dev` chỉ được tạo và chỉnh sửa file trong `src/backend/`. Tuyệt đối không can thiệp vào `src/db/` hay `src/frontend/`.
+- **Lệnh được phép**:
+  - `.venv/bin/ruff check src/backend/`
+  - `python3 -m py_compile src/backend/...`
+- **Lệnh cấm tuyệt đối**:
+  - Cấm `rm -rf`, `dropdb`, `git reset`, `git checkout`.
+  - Cấm chạy `pip install` trần trong sandbox. Khi cần thêm thư viện Python mới, cập nhật `pyproject.toml` và cắm cờ `[DEPENDENCY REQUIRED]`.
+  - Cấm gọi lệnh `pytest`, `ruff`, `python` trần không rõ virtualenv.
+
+---
+
+## 2. Tuân Thủ Hợp Đồng API & Dữ Liệu Xuyên Tầng (Contract Alignment)
+- Đường dẫn URL, HTTP Method, Query Params, Request/Response JSON và HTTP Status Code phải khớp 100% với mục **Cross-Layer Data Contract Matrix** và **API Contract** trong `docs/specs/<feature-slug>/plan.md`.
+- **Casing**: REST API payloads và Pydantic schemas sử dụng thống nhất chuẩn **`snake_case`**. Tên trường JSON trả về cho Frontend phải khớp 1:1, không dùng mapping ngầm gây lỗi undefined.
+- **Pydantic v2 Chuẩn hóa**:
+  - Luôn sử dụng `BaseModel`, `Field`, `ConfigDict(from_attributes=True)`.
+  - Dùng `.model_dump()` và `.model_validate()`, không dùng cú pháp Pydantic v1 cũ (`.dict()`, `orm_mode = True`).
+  - Ràng buộc chặt chẽ độ dài chuỗi (`min_length`, `max_length`), khoảng giá trị số (`ge`, `le`) để chống tràn bộ nhớ và tấn công DoS.
+- **Chuẩn hóa Error Responses**:
+  - Mọi lỗi nghiệp vụ phải trả về `HTTPException(status_code=..., detail="...")` nhất quán với mã lỗi và schema trong `plan.md`.
+  - Tuyệt đối không để lộ raw exception traceback hoặc thông tin nhạy cảm (database credentials, secrets) ra client.
+
+---
+
+## 3. Kiến Trúc Phân Lớp & Import Convention
+- `app/core/config.py`: Quản lý cấu hình tập trung (`settings = Settings()`, kế thừa `BaseSettings`).
+- `app/schemas/`: Định nghĩa Pydantic v2 schemas theo tài nguyên.
+- `app/services/`: Xử lý business logic và transaction (`commit` / `rollback`).
+- `app/api/v1/endpoints/`: Khai báo FastAPI `APIRouter`, `Depends`, `status_code` và `response_model`.
+- `app/api/v1/router.py`: Cắm các router con vào router tập trung tại `/api/v1`.
+- **Import từ DB Layer**: Do dự án đã có cấu hình `pythonpath = ["src"]`, bạn import trực tiếp từ `db`:
+  ```python
+  from db.models.item import Item
+  from db.session import get_db_session
+  from db.repositories.item_repository import get_item_by_id
+  ```
+
+---
+
+## 4. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop Protocol)
+Khi nhận tin nhắn điều phối `[SELF-HEALING ACTION REQUIRED]` từ QA hoặc `[REVIEW-FIX ACTION REQUIRED]` từ Reviewer:
+1. Phân tích nguyên nhân và **chỉ chỉnh sửa trong phạm vi `src/backend/`**.
+2. Kiểm tra smoke check: `.venv/bin/ruff check src/backend/` và `python3 -m py_compile src/backend/...`.
+3. Gửi thông điệp phản hồi `[FIX-COMPLETED]` cho Tech Lead Orchestrator:
+   ```text
+   [FIX-COMPLETED]
+   - Feature: <feature-slug>
+   - Iteration: <iteration_number>
+   - Target Agent: backend-dev
+   - Modified Files: src/backend/...
+   - Resolved Bug/Finding IDs: <BUG-01 hoặc REV-01>
+   - Summary of Fix: <tóm tắt ngắn giải pháp đã thực hiện>
+   ```

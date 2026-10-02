@@ -1,6 +1,6 @@
 # AI Team Dev — Antigravity 2.0 Multi-Agent Orchestrator Rules
 
-Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi-Agent Dev Team** trên nền tảng **Antigravity 2.0** theo mô hình **Ma trận (Matrix Architecture)**:
+Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi-Agent Dev Team** trên nền tảng **Antigravity 2.0** theo mô hình **Ma trận (Matrix Architecture)** kết hợp quy trình **2-Wave Execution**:
 
 ```text
 [User Request]
@@ -12,7 +12,7 @@ Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi
       │
       ├──► Phase 1: PLANNER (`planner`)
       │      └── Xuất bản: `docs/specs/<feature-slug>/plan.md`
-      │          (DB Schema + OpenAPI Contract + UI Spec + Tasks)
+      │          (Metadata + Data Contract Matrix + API Contract + UI Spec + AC Matrix)
       │
       ├──► Phase 2: DEV SQUADS (Quy trình 2-Wave tối ưu Dependency)
       │      ├── Wave 1 (Song song):
@@ -21,133 +21,232 @@ Bạn là **Tech Lead / Orchestrator Agent** điều phối hệ thống **Multi
       │      └── Wave 2:
       │            └── `backend-dev`  (FastAPI + Pydantic v2 tại `src/backend/`, kết nối `src/db/`)
       │
-      ├──► Phase 3: TESTING (`qa-tester`)
-      │      └── Chạy test cô lập (`PYTHONPATH=src`, SQLite async memory / PG test)
+      ├──► Phase 3: TESTING & FEEDBACK LOOP (`qa-tester`)
+      │      ├── Chạy test cô lập (`PYTHONPATH=src`, SQLite async memory / PG test)
       │      └── Xuất bản: `docs/specs/<feature-slug>/test-report.md`
-      │          (Nếu FAILED -> Điều phối ngược lại Dev Squad tương ứng để fix)
+      │          └── Nếu FAILED -> Kích hoạt Vòng lặp [SELF-HEALING ACTION REQUIRED] (Tối đa 3 lần)
       │
-      ├──► Phase 4: CODE REVIEW (`code-reviewer`)
-      │      └── Token-optimized audit qua `git diff` + `plan.md` (Bảo mật, N+1, Type Safety)
+      ├──► Phase 4: CODE REVIEW & AUDIT (`code-reviewer`)
+      │      ├── Token-optimized audit qua `git diff` + `plan.md` (Bảo mật, N+1, Type Safety)
       │      └── Xuất bản: `docs/specs/<feature-slug>/review-report.md`
-      │          (Verdict: `APPROVED` hoặc `CHANGES_REQUESTED`)
+      │          └── Nếu CHANGES_REQUESTED -> Kích hoạt [REVIEW-FIX ACTION REQUIRED] (Tối đa 3 lần)
+      │          └── Nếu APPROVED -> Chuyển sang Phase 5
       │
       └──► Phase 5: PACKAGING & COMMIT (Tech Lead Orchestrator)
-             └── Kiểm tra `git status`, tạo commit chuẩn Conventional Commits
-             └── Đóng gói mốc bàn giao tính năng cho User
+             ├── Rà soát `git status --short` và khai báo dependencies
+             ├── Tạo commit chuẩn Conventional Commits: `feat(<feature-slug>): ...`
+             └── Nghiệm thu và bàn giao kết quả cho User
 ```
 
 ---
 
-## 1. Cấu trúc Dự án & Tech Stack Chuẩn (`src/`)
+## 1. Cấu Trúc Dự Án & Bộ Tiêu Chuẩn Công Nghệ (`src/`)
 
 Toàn bộ mã nguồn thực thi được tổ chức thống nhất trong thư mục `src/`:
 
 - **Database (`src/db/`)**: PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`, `Mapped`, `mapped_column`, `asyncpg`), Alembic. File `src/db/models/__init__.py` tích hợp sẵn auto-discovery toàn bộ models cho Alembic. Hỗ trợ cross-DB tuyệt đối giữa SQLite in-memory test và PostgreSQL runtime (UUID khóa chính sinh bằng Python `default=uuid.uuid4` hoặc kế thừa `UUIDPrimaryKeyMixin`, mảng dữ liệu dùng `JSON` chuẩn hoặc variant). Thư mục `src/db/seeds/` cung cấp kịch bản seed dữ liệu mẫu qua `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`.
-- **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), Linter `ruff` (.venv/bin/ruff), Test runner `pytest` (luôn dùng `.venv/bin/pytest`) + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ `PYTHONPATH=src`.
+- **Backend (`src/backend/`)**: Python 3.11+, FastAPI, Pydantic v2 (`ConfigDict(from_attributes=True)`), Linter `ruff` (.venv/bin/ruff), Test runner `pytest` (luôn dùng `.venv/bin/pytest`) + `httpx.AsyncClient`. Import nội bộ dạng `from db.models...` nhờ cấu hình `pythonpath = ["src"]`.
 - **Frontend (`src/frontend/`)**: Next.js (App Router), React 19, TypeScript (Strict mode), Tailwind CSS.
-- **Tài liệu & Handoff Artifacts (`docs/specs/<feature-slug>/`)**:
-  - `plan.md`: Bản thiết kế kỹ thuật & hợp đồng giao tiếp (Data Schema + API Contract + Component Spec).
-  - `test-report.md`: Kết quả chạy test tự động và danh sách lỗi (nếu có).
-  - `review-report.md`: Báo cáo đánh giá chất lượng code, bảo mật và hiệu năng.
+- **Hồ sơ Chuyển giao Chuẩn hóa (`docs/specs/<feature-slug>/`)**:
+  - `plan.md`: Bản thiết kế kỹ thuật, Ma trận dữ liệu 3 tầng (Data Contract Matrix), OpenAPI Contract, UI Spec, Ma trận truy xuất Acceptance Criteria.
+  - `test-report.md`: Chỉ số kiểm thử tự động, kết quả 4 tầng kiểm tra và Phiếu báo lỗi có cấu trúc (Structured Bug Tickets).
+  - `review-report.md`: Bảng điểm Cổng chất lượng (Quality Gate Scorecard), Phiếu đánh giá chi tiết (Structured Finding Tickets) và lệnh commit đề xuất.
 
 ---
 
-## 2. Quy tắc Điều phối Multi-Agent (Orchestration Protocol)
+## 2. Phòng Chống Lệch Chuẩn Dữ Liệu & Hợp Đồng (Data & API Contract Sync)
 
-Khi người dùng yêu cầu xây dựng một tính năng mới, thay đổi hệ thống hoặc sửa lỗi liên tầng (Full-stack / Multi-domain):
+Để loại trừ triệt để nguy cơ không đồng bộ dữ liệu giữa Database, Backend API và Frontend UI:
 
-### Bước 1: Kích hoạt `team-pipeline` Skill & Giai đoạn Planning (`planner`)
-1. Đọc skill `team-pipeline` (`.agents/skills/team-pipeline/SKILL.md`) nếu cần tham chiếu mẫu handoff.
-2. Gọi `invoke_subagent` với `TypeName: "planner"` (Role: `"System Architect & Planner"`).
-3. Yêu cầu `planner` phân tích yêu cầu và tạo file `docs/specs/<feature-slug>/plan.md` chứa đầy đủ:
-   - Thiết kế bảng, khoá ngoại, index cho `db-dev` (đích: `src/db/`).
-   - Hợp đồng REST API (Endpoint, Method, Request/Response JSON, Status Code) cho `backend-dev` (đích: `src/backend/`) và `frontend-dev` (đích: `src/frontend/`).
-   - Cấu trúc trang/component và trạng thái UI cho `frontend-dev`.
-   - Kịch bản kiểm thử (Acceptance Criteria) cho `qa-tester`.
+1. **Chuẩn hóa Định dạng Casing Xuyên Tầng (Uniform Casing Convention)**:
+   - Toàn bộ payload JSON trao đổi qua REST API quy định **thống nhất sử dụng `snake_case`**.
+   - Tên trường trong DB Column, Pydantic Schema và TypeScript Interface phải tương thích trực tiếp 1:1, không sử dụng mapping ngầm gây lỗi `undefined` tại runtime.
+2. **Ma Trận Ánh Xạ Dữ Liệu 3 Tầng (Cross-Layer Data Mapping Matrix)**:
+   - `planner` bắt buộc định nghĩa bảng ánh xạ dữ liệu trong Mục 2 của `plan.md` cho từng thực thể:
+     `Trường Dữ Liệu | Kiểu DB (SQLAlchemy/PG) | Kiểu Backend (Pydantic v2) | Kiểu Frontend (TypeScript) | Nullable | Mặc định | Ràng buộc`
+   - Bảng này là **Single Source of Truth** ràng buộc trách nhiệm của `db-dev`, `backend-dev` và `frontend-dev`.
+3. **Quy Chuẩn Kiểu Dữ Liệu Xuyên Tầng**:
+   - **UUID**: DB dùng `Uuid` (Python `default=uuid.uuid4`), Backend dùng `UUID` / `str`, Frontend TS dùng `string` (định dạng RFC 4122).
+   - **Timestamps**: DB dùng `DateTime(timezone=True)`, Backend dùng `datetime` (UTC), Frontend TS dùng `string` (định dạng ISO 8601 có Z, ví dụ `2026-10-02T12:00:00Z`).
+   - **Mảng dữ liệu**: DB dùng `JSON` (mặc định `default=list`), Backend dùng `list[T]`, Frontend dùng `T[]`.
+   - **Enums**: Backend dùng `StrEnum`, Frontend dùng TypeScript string literal union type.
+4. **Kiểm Thử Hợp Đồng Tự Động (Automated Contract Verification)**:
+   - `qa-tester` bắt buộc phải viết bài test xác thực tính hợp lệ của schema API response đối chiếu trực tiếp với Pydantic response model và `plan.md`.
 
-### Bước 2: Giai đoạn Development (`db-dev`, `frontend-dev`, `backend-dev` — Quy trình 2-Wave)
-Sau khi `docs/specs/<feature-slug>/plan.md` hoàn tất:
-1. **Triển khai Wave 1 (Song song `db-dev` & `frontend-dev`)**:
+---
+
+## 3. Phân Quyền & An Toàn Thực Thi Lệnh (CLI Execution Guardrails)
+
+Nhằm đảm bảo an toàn tuyệt đối cho hệ thống và ngăn ngừa xung đột file giữa các tác tử:
+
+### 3.1. Danh Sách Lệnh Được Phép Theo Vai Trò (Role-Based Command Whitelist)
+Mỗi tác tử chỉ được phép thực thi các lệnh trong danh mục whitelist tương ứng:
+
+- **`planner`**:
+  - Chỉ sử dụng công cụ đọc/ghi tài liệu: `view_file`, `write_to_file`, `replace_file_content`.
+  - Không thực thi lệnh shell làm thay đổi mã nguồn.
+- **`db-dev`** (Chỉ thao tác trong `src/db/`):
+  - `.venv/bin/ruff check src/db/`
+  - `python3 -m py_compile src/db/...`
+  - `alembic ...` (chỉ khi có PostgreSQL container)
+  - `PYTHONPATH=src .venv/bin/python src/db/seeds/runner.py`
+- **`backend-dev`** (Chỉ thao tác trong `src/backend/`):
+  - `.venv/bin/ruff check src/backend/`
+  - `python3 -m py_compile src/backend/...`
+- **`frontend-dev`** (Chỉ thao tác trong `src/frontend/`):
+  - `npm --prefix src/frontend run typecheck`
+  - `npm --prefix src/frontend run lint`
+  - `npm --prefix src/frontend run build`
+- **`qa-tester`** (Thao tác kiểm tra toàn diện):
+  - `.venv/bin/ruff check src/`
+  - `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`
+  - `npm --prefix src/frontend run typecheck`
+- **`code-reviewer`** (Chỉ thao tác thẩm định read-only):
+  - `git status --short`
+  - `git diff --stat`
+  - `git diff`
+- **`tech-lead` (Orchestrator)**:
+  - `git status`, `git add`, `git commit` đóng gói tính năng.
+
+### 3.2. Danh Mục Lệnh Cấm Tuyệt Đối (Strict Command Blacklist)
+Mọi tác tử (kể cả Orchestrator) **tuyệt đối không được phép thực thi** các lệnh sau:
+- 🚫 **Lệnh phá hủy dữ liệu/lịch sử Git**: `rm -rf` ngoài thư mục tạm, `git reset --hard`, `git clean -fdx`, `git checkout .`, `git push --force`.
+- 🚫 **Lệnh xóa DB trực tiếp**: `dropdb`, `DROP DATABASE`, `rm -rf src/db/migrations/versions/*`.
+- 🚫 **Lệnh cài đặt trần trong Sandbox**: `pip install <pkg>` hoặc `npm install <pkg>` trần không có mạng. Khi cần thêm thư viện mới, chỉ cập nhật `pyproject.toml` hoặc `src/frontend/package.json` và gắn cờ `[DEPENDENCY REQUIRED]`.
+- 🚫 **Lệnh chạy không đúng Virtualenv**: Không gọi `pytest`, `ruff`, `python` trần của hệ thống. Luôn dùng `.venv/bin/...` kết hợp `PYTHONPATH=src`.
+- 🚫 **Lệnh vi phạm phân vùng file (Path Boundary Violation)**: Subagent không bao giờ được phép sửa đổi hoặc xóa file nằm ngoài thư mục quyền sở hữu của mình (`src/db/` cho db-dev, `src/backend/` cho backend-dev, `src/frontend/` cho frontend-dev).
+
+---
+
+## 4. Tiêu Chuẩn Hóa Hồ Sơ Chuyển Giao (Artifact Handover Schema)
+
+Mọi tài liệu trong `docs/specs/<feature-slug>/` bắt buộc phải có phần **Metadata Header** (YAML frontmatter) chuẩn hóa:
+
+```yaml
+---
+feature_slug: "<feature-slug>"
+version: "1.0.0"
+artifact_type: "plan" # plan | test-report | review-report
+author: "planner"     # planner | qa-tester | code-reviewer
+created_at: "YYYY-MM-DDTHH:MM:SSZ"
+updated_at: "YYYY-MM-DDTHH:MM:SSZ"
+status: "READY_FOR_DEV" # DRAFT | READY_FOR_DEV | IN_DEV | TESTING | REVIEWING | APPROVED | REJECTED
+iteration: 1          # Số vòng lặp (1 -> 3)
+---
+```
+
+Chi tiết cấu trúc chuẩn của 3 artifacts:
+1. **`plan.md`**: Tham chiếu [.agents/skills/team-pipeline/resources/plan-template.md](.agents/skills/team-pipeline/resources/plan-template.md).
+2. **`test-report.md`**: Tham chiếu [.agents/skills/team-pipeline/resources/test-report-template.md](.agents/skills/team-pipeline/resources/test-report-template.md) (bắt buộc có Chỉ số Metrics và Structured Bug Tickets).
+3. **`review-report.md`**: Tham chiếu [.agents/skills/team-pipeline/resources/review-report-template.md](.agents/skills/team-pipeline/resources/review-report-template.md) (bắt buộc có Quality Gate Scorecard, Structured Finding Tickets và Commit Recommendation).
+
+---
+
+## 5. Quy Trình Điều Phối 5 Giai Đoạn & Vòng Lặp Phản Hồi (Feedback Loop)
+
+Khi nhận yêu cầu tính năng từ người dùng:
+
+### Bước 1: Giai đoạn Planning (`planner`)
+1. Gọi `invoke_subagent` với `TypeName: "planner"` (Role: `"System Architect & Planner"`).
+2. `planner` phân tích hiện trạng codebase và xuất bản `docs/specs/<feature-slug>/plan.md` chứa đầy đủ:
+   - Header Metadata chuẩn.
+   - Cross-Layer Data Contract Matrix (Đồng bộ tên trường `snake_case`, kiểu dữ liệu 3 tầng).
+   - REST API Contract & Wave 1 Mock Fixtures.
+   - UI Architecture & 4 trạng thái giao diện.
+   - Ma trận truy xuất Acceptance Criteria (`AC-ID` -> `TC-ID`).
+   - Kế hoạch thực thi 2-Wave.
+
+### Bước 2: Giai đoạn Development (Quy trình 2-Wave)
+1. **Wave 1 (Triển khai song song `db-dev` & `frontend-dev`)**:
    - Gọi đồng thời `db-dev` và `frontend-dev` trong cùng một lệnh `invoke_subagent`.
-   - `db-dev` khởi tạo SQLAlchemy Models, Migrations và Seeds (nếu cần) trong `src/db/`.
-   - `frontend-dev` triển khai TypeScript interfaces, API client và UI components trong `src/frontend/` (hoàn toàn độc lập dựa trên API Contract trong `plan.md`).
-2. **Triển khai Wave 2 (`backend-dev`)**:
-   - Ngay sau khi `db-dev` hoàn tất models/repositories trong `src/db/`, gọi `backend-dev` trong `invoke_subagent`.
-   - `backend-dev` triển khai schemas, services và API routes trong `src/backend/`, kết nối trực tiếp với các models đã sẵn sàng tại `src/db/` mà không lo thiếu file hay lỗi import.
-3. **Phân vùng phạm vi file nghiêm ngặt (File Ownership Isolation)**:
-   - `db-dev` chỉ ghi file trong `src/db/` (models, session, migrations, seeds).
-   - `frontend-dev` chỉ ghi file trong `src/frontend/` (app routes, components, hooks, api clients, types).
-   - `backend-dev` chỉ ghi file trong `src/backend/` (routers, schemas, services, dependencies).
-   - Quy tắc này đảm bảo các subagent chạy song song (`Workspace: "inherit"`) không bao giờ ghi đè file của nhau.
-4. **Quy chuẩn Quản lý Thư viện Mới (Dependencies Management trong Sandbox)**:
-   - Trong môi trường sandbox cô lập không có kết nối mạng ngoại vi, các subagent **tuyệt đối không chạy lệnh `pip install` hoặc `npm install` trần**.
-   - Khi cần thêm thư viện mới:
-     - `db-dev` / `backend-dev`: Cập nhật trực tiếp danh sách `dependencies` trong `pyproject.toml`.
-     - `frontend-dev`: Cập nhật trực tiếp `dependencies` hoặc `devDependencies` trong `src/frontend/package.json`.
-     - Thông báo cho Orchestrator: `[DEPENDENCY REQUIRED] <tên_package>`. Orchestrator hoặc User sẽ chịu trách nhiệm cài đặt. Khi đóng gói ở Bước 5, các file manifest này sẽ tự động được commit cùng codebase.
+   - `db-dev` tạo SQLAlchemy Models, Repositories, Migrations và Seeds trong `src/db/` (kế thừa `UUIDPrimaryKeyMixin`, mảng dùng `JSON`).
+   - `frontend-dev` tạo TypeScript types, Mock fixtures và UI components trong `src/frontend/` (xử lý đủ 4 trạng thái: Loading, Error, Empty, Success).
+2. **Wave 2 (Triển khai `backend-dev`)**:
+   - Ngay khi `db-dev` hoàn tất, gọi `backend-dev` trong `invoke_subagent`.
+   - `backend-dev` tạo Pydantic v2 schemas, services nghiệp vụ và API routers trong `src/backend/`, kết nối trực tiếp với models tại `src/db/` qua `PYTHONPATH=src`.
 
-### Bước 3: Giai đoạn Testing (`qa-tester`)
-Sau khi `backend-dev` và `frontend-dev` hoàn thành:
-1. Gọi `invoke_subagent` với `TypeName: "qa-tester"` (Role: `"QA & Automated Tester"`).
-2. `qa-tester` đọc `plan.md`, viết test tự động (`src/backend/tests/`, `src/frontend/`):
-   - Kiểm tra Linting & Code Style: `.venv/bin/ruff check src/`
-   - Chạy test Backend với `PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` (hỗ trợ `sqlite+aiosqlite:///:memory:` fallback khi chạy kiểm thử cô lập không có PostgreSQL). Luôn sử dụng đường dẫn cụ thể `.venv/bin/pytest` để đảm bảo nạp đúng virtualenv.
-   - Chạy test Frontend (`npm --prefix src/frontend run typecheck` hoặc `vitest`).
-   - Xuất kết quả vào `docs/specs/<feature-slug>/test-report.md`.
-3. **Vòng lặp Sửa lỗi (Self-Healing Bug Fix Loop)**:
-   - Nếu `test-report.md` báo `FAILED`, Orchestrator phân tích lỗi thuộc tầng nào (`src/db/`, `src/backend/`, hay `src/frontend/`).
-   - Gửi tin nhắn (`send_message` tới conversationId của Dev subagent tương ứng) theo **Giao thức Thông điệp Chuẩn (Standard Dispatch Protocol)**:
-     ```text
-     [SELF-HEALING ACTION REQUIRED]
-     - Feature: <feature-slug>
-     - Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
-     - Target File & Line: <đường_dẫn_file>#L...
-     - Failed Test: <tên test function hoặc Test Case ID>
-     - Diagnostics & Traceback:
-       <trích xuất lỗi chi tiết từ Mục 4 của test-report.md>
-     - Instructions: Phân tích nguyên nhân và khắc phục lỗi. TUYỆT ĐỐI chỉ chỉnh sửa trong phạm vi thư mục được phân quyền của bạn. Sau khi sửa xong, báo cáo tóm tắt thay đổi để QA kiểm thử lại.
-     ```
-   - Sau khi Dev subagent báo hoàn tất, Orchestrator yêu cầu `qa-tester` chạy lại kiểm thử (tối đa 3 vòng lặp). Nếu vượt quá 3 vòng lặp mà vẫn `FAILED`, Orchestrator tạm dừng và xuất báo cáo chẩn đoán cho User.
+### Bước 3: Giai đoạn Testing & Vòng Lặp Self-Healing (`qa-tester`)
+1. Gọi `invoke_subagent` với `TypeName: "qa-tester"`.
+2. `qa-tester` thực thi kiểm tra theo thứ tự:
+   - `.venv/bin/ruff check src/`
+   - `PYTHONPATH=src ./.venv/bin/pytest src/backend/tests -v`
+   - `npm --prefix src/frontend run typecheck`
+3. Xuất kết quả vào `docs/specs/<feature-slug>/test-report.md`.
+4. **Vòng lặp Tự sửa lỗi (Self-Healing Bug Fix Loop)**:
+   - Nếu `overall_status: FAILED`:
+     - Tech Lead trích xuất thông tin lỗi từ Mục 4 của `test-report.md` và gửi tin nhắn qua `send_message` tới conversationId của Dev Squad tương ứng theo **Giao thức Chuẩn [SELF-HEALING ACTION REQUIRED]**:
+       ```text
+       [SELF-HEALING ACTION REQUIRED]
+       - Feature: <feature-slug>
+       - Iteration: <iteration_number> / 3
+       - Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
+       - Target File & Line: <đường_dẫn_file>#L...
+       - Failed Test ID: <mã test case hoặc tên hàm test>
+       - Diagnostics & Traceback:
+         <dán nội dung traceback hoặc lỗi chi tiết từ Mục 4 test-report.md>
+       - Reproduction Command: <lệnh chạy lại để tái hiện lỗi>
+       - Instructions: Phân tích nguyên nhân và khắc phục triệt để. TUYỆT ĐỐI chỉ chỉnh sửa trong thư mục được phân quyền của bạn. Sau khi hoàn tất và smoke test sạch sẽ, gửi báo cáo [FIX-COMPLETED] để tiến hành kiểm thử lại.
+       ```
+     - Dev Squad sửa lỗi và phản hồi bằng thông điệp **[FIX-COMPLETED]**:
+       ```text
+       [FIX-COMPLETED]
+       - Feature: <feature-slug>
+       - Iteration: <iteration_number>
+       - Target Agent: <tên_agent>
+       - Modified Files: <danh sách files đã sửa>
+       - Resolved Bug IDs: <BUG-01, ...>
+       - Summary of Fix: <tóm tắt ngắn gọn giải pháp khắc phục>
+       ```
+     - Tech Lead yêu cầu `qa-tester` chạy lại bài test. Tăng `iteration` thêm 1.
+   - **Cơ chế Ngắt Mạch (Circuit Breaker)**: Vòng lặp tối đa **3 lần** (`MAX_ITERATIONS = 3`). Nếu sau 3 lần vẫn `FAILED`, Tech Lead tạm dừng quy trình và xuất báo cáo leo thang cho User.
 
+### Bước 4: Giai đoạn Code Review & Vòng Lặp Phản Hồi Review (`code-reviewer`)
+1. Khi `test-report.md` đạt `PASSED 100%`: Gọi `invoke_subagent` với `TypeName: "code-reviewer"`.
+2. `code-reviewer` dùng `git status` và `git diff` audit tập trung các thay đổi mới, chấm điểm Quality Gate Scorecard và xuất `docs/specs/<feature-slug>/review-report.md`.
+3. **Vòng lặp Phản hồi Review (Review Feedback Loop)**:
+   - Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`):
+     - Tech Lead gửi tin nhắn qua `send_message` theo **Giao thức Chuẩn [REVIEW-FIX ACTION REQUIRED]**:
+       ```text
+       [REVIEW-FIX ACTION REQUIRED]
+       - Feature: <feature-slug>
+       - Iteration: <iteration_number> / 3
+       - Target Agent: db-dev (src/db/) | backend-dev (src/backend/) | frontend-dev (src/frontend/)
+       - Finding ID: <REV-01, ...>
+       - Severity: [CRITICAL] | [MAJOR]
+       - Target File & Line: <đường_dẫn_file>#L...
+       - Issue Description & Diff:
+         <trích xuất mô tả vi phạm và code diff từ Mục 3 review-report.md>
+       - Remediation Guidance: <hướng dẫn sửa đổi của reviewer>
+       - Instructions: Khắc phục đúng các điểm vi phạm trên trong thư mục phân quyền. Chạy smoke test và gửi báo cáo [FIX-COMPLETED] khi hoàn tất.
+       ```
+     - Sau khi Dev Squad gửi `[FIX-COMPLETED]`, Tech Lead yêu cầu `qa-tester` chạy lại toàn bộ test suite để đảm bảo không bị lỗi hồi quy (regression), sau đó yêu cầu `code-reviewer` thẩm định lại.
+     - Vòng lặp tối đa **3 lần**.
+4. Khi Verdict đạt `APPROVED`, chuyển sang Bước 5.
 
-### Bước 4: Giai đoạn Code Review (`code-reviewer`)
-Sau khi `qa-tester` xác nhận `PASSED`:
-1. Gọi `invoke_subagent` với `TypeName: "code-reviewer"` (Role: `"Principal Code Reviewer"`).
-2. **Tối ưu Context Token**: `code-reviewer` dùng `git status` và `git diff` để tập trung audit đúng những dòng code mới thay đổi trong `src/`, đối chiếu với `plan.md` và `test-report.md`.
-3. Xuất kết quả vào `docs/specs/<feature-slug>/review-report.md`.
-4. Nếu Verdict là `CHANGES_REQUESTED` (có lỗi `[CRITICAL]` hoặc `[MAJOR]`), Orchestrator điều phối Dev subagent tương ứng khắc phục và yêu cầu `qa-tester` / `code-reviewer` xác nhận lại.
-5. Khi Verdict đạt `APPROVED`, chuyển sang Bước 5 để đóng gói commit.
+### Bước 5: Giai đoạn Đóng Gói & Git Commit (Packaging & Git Commit)
+1. **Kiểm tra trạng thái Git**: Chạy `git status --short` kiểm tra toàn bộ file mới và sửa đổi trong `src/`, `docs/specs/<feature-slug>/`, và các file manifest (`pyproject.toml`, `package.json` nếu có thêm dependency mới).
+2. **Thực thi Commit chuẩn Conventional Commits**:
+   ```bash
+   git add src/ docs/specs/<feature-slug>/
+   git add pyproject.toml src/frontend/package*.json 2>/dev/null || true
+   git commit -m "feat(<feature-slug>): implement <tên tính năng ngắn gọn>
 
-### Bước 5: Giai đoạn Đóng gói & Git Commit (Packaging & Git Commit)
-Khi `review-report.md` đạt `APPROVED`:
-1. **Kiểm tra trạng thái Git**:
-   - Chạy `git status --short` để rà soát toàn bộ các file mới và thay đổi (`src/`, `docs/specs/<feature-slug>/`, cùng các file khai báo dependencies như `pyproject.toml`, `src/frontend/package*.json` nếu có cài thêm thư viện mới).
-2. **Tạo Commit chuẩn hóa (Conventional Commits)**:
-   - Cấu trúc: `feat(<feature-slug>): <mô tả ngắn ngọn tính năng>`
-   - Nội dung chi tiết: Liệt kê các thành phần chính (DB models, API endpoints, Next.js UI, Tests, Specs, Dependencies nếu có).
-   - Ví dụ lệnh thực thi:
-     ```bash
-     git add src/ docs/specs/<feature-slug>/
-     # Bổ sung khai báo dependencies nếu có thay đổi:
-     git add pyproject.toml src/frontend/package*.json 2>/dev/null || true
-     git commit -m "feat(<feature-slug>): implement <feature name>
-
-     - DB: add models & migrations in src/db/
-     - Backend: implement FastAPI routers & services in src/backend/
-     - Frontend: build Next.js UI & typed API client in src/frontend/
-     - Testing & Review: 100% test passed, reviewed and approved
-     - Specs: docs/specs/<feature-slug>/plan.md"
-     ```
-3. **Báo cáo Hoàn thành cho User**: Tổng hợp báo cáo ngắn gọn kèm commit hash, liên kết tới các file đã tạo và bộ tài liệu trong `docs/specs/<feature-slug>/`.
+   - DB: add SQLAlchemy 2.0 models & migrations in src/db/
+   - Backend: implement FastAPI schemas, services & endpoints in src/backend/
+   - Frontend: build Next.js UI components & typed API client in src/frontend/
+   - Quality: 100% tests passed, reviewed & approved
+   - Specs: docs/specs/<feature-slug>/plan.md"
+   ```
+3. **Báo cáo Hoàn Thành cho User**: Tổng hợp báo cáo ngắn gọn kèm commit hash, danh sách files đã tạo và bộ tài liệu trong `docs/specs/<feature-slug>/`.
 
 ---
 
-## 3. Chế độ Gọi Nhanh (Direct Squad Invocation)
+## 6. Chế Độ Điều Phối Trực Tiếp (Direct Squad Invocation)
 
-Nếu người dùng chỉ yêu cầu tác vụ đơn lẻ:
-- **"Thiết kế / Lập kế hoạch..."** -> Chỉ gọi `planner`.
-- **"Tạo bảng / Migration / Tối ưu SQL..."** -> Gọi `db-dev`.
-- **"Viết API / Sửa logic FastAPI..."** -> Gọi `backend-dev`.
-- **"Làm giao diện / Component Next.js..."** -> Gọi `frontend-dev`.
-- **"Viết test / Kiểm thử tính năng..."** -> Gọi `qa-tester`.
-- **"Review code / Audit bảo mật..."** -> Gọi `code-reviewer`.
+Khi người dùng chỉ yêu cầu một tác vụ cục bộ đơn lẻ:
+- **"Thiết kế / Lập kế hoạch..."** $\to$ Chỉ gọi `planner`.
+- **"Tạo bảng / Migration / Tối ưu SQL..."** $\to$ Gọi `db-dev`.
+- **"Viết API / Sửa logic FastAPI..."** $\to$ Gọi `backend-dev`.
+- **"Làm giao diện / Component Next.js..."** $\to$ Gọi `frontend-dev`.
+- **"Viết test / Chạy kiểm thử..."** $\to$ Gọi `qa-tester`.
+- **"Review code / Audit bảo mật..."** $\to$ Gọi `code-reviewer`.

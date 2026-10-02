@@ -2,6 +2,12 @@
 
 Tài liệu này hướng dẫn cách sử dụng repository này làm **Template Chuẩn (Starter Template)** để khởi tạo và phát triển các dự án phần mềm mới cùng **Hệ thống AI Team Dev (Antigravity 2.0)**.
 
+Template đã được thiết kế và kiểm thử chuyên sâu nhằm giải quyết triệt để 4 thách thức cốt lõi trong phát triển phần mềm đa tác tử (Multi-Agent):
+1. **Cơ chế Phản hồi Tự động (Feedback Loop & Circuit Breaker)**: Vòng lặp sửa lỗi 2 chiều cho cả Testing và Code Review có quản lý trạng thái, giới hạn tối đa 3 lần lặp và cơ chế ngắt mạch an toàn.
+2. **Đồng bộ Hợp đồng Dữ liệu & API (Data & API Contract Synchronization)**: Loại bỏ rủi ro desync thông qua Ma trận ánh xạ dữ liệu 3 tầng (Database $\leftrightarrow$ Backend $\leftrightarrow$ Frontend) và chuẩn hóa casing `snake_case`.
+3. **Rào chắn An toàn Thực thi Lệnh (CLI Execution Guardrails)**: Phân quyền thực thi lệnh theo vai trò (Role-based Whitelist & Blacklist) và bảo vệ nghiêm ngặt phân vùng file.
+4. **Tiêu chuẩn hóa Hồ sơ Bàn giao (Artifact Handover Schema)**: Chuẩn hóa toàn diện định dạng Metadata Header và phiếu báo lỗi/thẩm định có cấu trúc tại `docs/specs/<feature-slug>/`.
+
 ---
 
 ## 1. Tổng quan Kiến trúc Template
@@ -18,6 +24,7 @@ Template này được thiết kế theo **Mô hình Ma trận (Matrix Architect
       │
       ├──► Phase 1: PLANNER (`planner`)
       │      └── docs/specs/<feature-slug>/plan.md
+      │          (Metadata + Cross-Layer Matrix + REST API Contract + UI Spec + AC Matrix)
       │
       ├──► Phase 2: DEV SQUADS (2-Wave Execution)
       │      ├── Wave 1 (Song song):
@@ -26,13 +33,15 @@ Template này được thiết kế theo **Mô hình Ma trận (Matrix Architect
       │      └── Wave 2:
       │            └── `backend-dev`  ──► src/backend/ (FastAPI + Pydantic v2)
       │
-      ├──► Phase 3: TESTING (`qa-tester`)
-      │      └── Ruff Linter + Pytest SQLite in-memory + Frontend Typecheck
+      ├──► Phase 3: TESTING & FEEDBACK LOOP (`qa-tester`)
+      │      ├── Linter + Pytest SQLite in-memory + Frontend Typecheck
       │      └── docs/specs/<feature-slug>/test-report.md
+      │          └── [SELF-HEALING ACTION REQUIRED] -> [FIX-COMPLETED] (Max 3 retries)
       │
-      ├──► Phase 4: CODE REVIEW (`code-reviewer`)
-      │      └── Token-optimized audit qua git diff
+      ├──► Phase 4: CODE REVIEW & AUDIT (`code-reviewer`)
+      │      ├── Token-optimized audit qua git diff
       │      └── docs/specs/<feature-slug>/review-report.md
+      │          └── [REVIEW-FIX ACTION REQUIRED] -> [FIX-COMPLETED] (Max 3 retries)
       │
       └──► Phase 5: PACKAGING & COMMIT (Tech Lead Orchestrator)
              └── Conventional Commits: feat(<feature-slug>): ...
@@ -149,7 +158,7 @@ Trước khi bắt đầu bất kỳ câu lệnh AI nào, hãy chạy lệnh ki�
 **Kết quả kỳ vọng**:
 * **Ruff**: `All checks passed!`
 * **Pytest**: `3 passed in 0.03s` (Pass cả endpoint `/health` và session async DB)
-* **Frontend Build**: `✓ Compiled successfully` (Next.js App Router render 4/4 static pages, typecheck sạch sẽ).
+* **Frontend Build**: `✓ Compiled successfully` (Next.js App Router render static pages, typecheck sạch sẽ).
 
 ---
 
@@ -178,11 +187,11 @@ Tùy vào nhu cầu công việc, bạn có thể chọn 1 trong 2 chế độ:
 
 ### Chế độ 1: Chạy Full-Flow (Tự động 5 Phase)
 Tech Lead sẽ tự động điều phối:
-1. `planner` $\to$ tạo `docs/specs/<feature-slug>/plan.md`.
+1. `planner` $\to$ tạo `docs/specs/<feature-slug>/plan.md` (kèm Cross-Layer Data Contract Matrix).
 2. Wave 1: Gọi song song `db-dev` (`src/db/`) & `frontend-dev` (`src/frontend/`).
 3. Wave 2: Gọi `backend-dev` (`src/backend/`) kết nối `src/db/`.
-4. `qa-tester` $\to$ chạy ruff, pytest, typecheck $\to$ tạo `docs/specs/<feature-slug>/test-report.md`.
-5. `code-reviewer` $\to$ audit `git diff` $\to$ tạo `docs/specs/<feature-slug>/review-report.md`.
+4. `qa-tester` $\to$ chạy ruff, pytest, typecheck $\to$ tạo `docs/specs/<feature-slug>/test-report.md`. Tự động kích hoạt Vòng lặp Self-Healing nếu có lỗi.
+5. `code-reviewer` $\to$ audit `git diff` $\to$ tạo `docs/specs/<feature-slug>/review-report.md`. Tự động kích hoạt Review-Fix loop nếu có lỗi.
 6. Tự động đóng gói commit: `git add src/ docs/specs/<feature-slug>/ pyproject.toml src/frontend/package*.json 2>/dev/null && git commit -m "feat(<feature-slug>): ..."`
 
 ### Chế độ 2: Gọi Trực tiếp Từng Tác tử Chuyên biệt (Direct Squad Invocation)
@@ -195,27 +204,25 @@ Tech Lead sẽ tự động điều phối:
 
 ---
 
-## 8. Các Nguyên tắc Sống còn Cần Nhớ (Best Practices)
+## 8. Các Nguyên tắc Sống còn Cần Nhớ (Best Practices & Guardrails)
 
 1. **Tuyệt đối không xoá thư mục `src/`**:
    - `src/` chứa các điểm neo (Anchor Points) và các file luật cục bộ [src/db/AGENTS.md](src/db/AGENTS.md), [src/backend/AGENTS.md](src/backend/AGENTS.md), [src/frontend/AGENTS.md](src/frontend/AGENTS.md).
-   - Hãy giữ nguyên khung sườn khởi tạo này.
-2. **Cơ chế Auto-Discovery cho Models & Seeds**:
-   - Mọi model SQLAlchemy mới được tạo trong `src/db/models/<name>.py` sẽ **tự động** được nạp vào Alembic nhờ [src/db/models/__init__.py](src/db/models/__init__.py).
-   - Mọi file seed dữ liệu `src/db/seeds/<name>_seed.py` được tự động tìm và chạy bởi `src/db/seeds/runner.py`.
-3. **Luôn dùng Virtualenv Runner**:
+2. **Tuân thủ Tuyệt đối Rào Chắn Lệnh (CLI Guardrails)**:
+   - Các tác tử chỉ chạy lệnh trong danh mục Whitelist phân quyền.
+   - Tuyệt đối cấm chạy lệnh cài đặt trần `pip/npm install` trong sandbox. Khi cần thêm thư viện mới, cập nhật `pyproject.toml` hoặc `src/frontend/package.json` và cắm cờ `[DEPENDENCY REQUIRED]`.
    - Luôn sử dụng `.venv/bin/pytest` và `.venv/bin/ruff` thay vì gọi lệnh trần.
-4. **Phân vùng File Tuyệt đối (File Isolation)**:
+3. **Phân vùng File Tuyệt đối (File Isolation)**:
    - `db-dev` chỉ ghi `src/db/`.
    - `backend-dev` chỉ ghi `src/backend/`.
    - `frontend-dev` chỉ ghi `src/frontend/`.
-   - `qa-tester` & `code-reviewer` không sửa code nghiệp vụ mà chỉ báo cáo lại cho Dev Squad sửa chữa thông qua vòng lặp Self-Healing.
-5. **Phân biệt Alembic Migration và SQLite Testing**:
-   - Bộ test tự động (`pytest`) sử dụng SQLite async in-memory khởi tạo qua `Base.metadata.create_all`, hoàn toàn độc lập và không phụ thuộc vào daemon PostgreSQL hay Alembic migrations.
-   - Alembic chỉ quản lý schema cho PostgreSQL runtime thật (`docker compose up -d postgres`).
+   - `qa-tester` & `code-reviewer` không sửa code nghiệp vụ mà báo cáo lại để Dev Squad sửa chữa thông qua vòng lặp phản hồi tự động.
+4. **Đồng bộ Hợp đồng Dữ liệu (Contract Synchronization)**:
+   - Toàn bộ payload REST API quy định **thống nhất sử dụng `snake_case`**.
+   - Mọi thuộc tính phải ánh xạ 1:1 theo Ma trận dữ liệu 3 tầng trong `plan.md`. Không dùng `any` trong TypeScript.
+5. **Cơ chế Vòng Lặp Phản Hồi & Ngắt Mạch (Circuit Breaker)**:
+   - Mọi phản hồi sửa lỗi tuân thủ giao thức `[SELF-HEALING ACTION REQUIRED]` / `[REVIEW-FIX ACTION REQUIRED]` và `[FIX-COMPLETED]`.
+   - Tối đa 3 vòng lặp cho mỗi tính năng. Nếu vượt quá, hệ thống tự động ngắt mạch và báo cáo cho con người xử lý.
 6. **Cross-DB Type Safety (UUID & ARRAY)**:
    - UUID khóa chính luôn dùng `from sqlalchemy import Uuid` kèm `default=uuid.uuid4` ở Python (hoặc kế thừa `UUIDPrimaryKeyMixin` từ `src/db/base.py`). Không dùng `server_default=text("gen_random_uuid()")`.
-   - Danh sách mảng (ví dụ `tags`) dùng `from sqlalchemy import JSON` (`default=list`) hoặc variant thay vì `ARRAY` trần để SQLite test không bị fail `CompileError`.
-7. **Quản lý Thư viện Mới trong Sandbox**:
-   - Trong sandbox cô lập, subagent không chạy lệnh `pip/npm install` trần. Chỉ cập nhật manifest (`pyproject.toml`, `package.json`) và ghi chú `[DEPENDENCY REQUIRED]` để Tech Lead Orchestrator / User cài đặt.
-
+   - Danh sách mảng dùng `from sqlalchemy import JSON` (`default=list`) hoặc variant thay vì `ARRAY` trần để SQLite test không bị fail `CompileError`.

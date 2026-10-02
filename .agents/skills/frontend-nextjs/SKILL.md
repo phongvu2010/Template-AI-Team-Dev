@@ -6,7 +6,21 @@ description: >-
 
 # Frontend Team Runbook: Next.js (App Router) + TypeScript + Tailwind CSS
 
-## 1. Cấu trúc Thư mục Chuẩn (`src/frontend/`)
+Runbook này hướng dẫn `frontend-dev` xây dựng giao diện người dùng hiện đại, tuân thủ **Cross-Layer Data Contract Matrix**, rào chắn an toàn dòng lệnh (**CLI Guardrails**) và tham gia vòng lặp tự sửa lỗi (**Feedback Loop**).
+
+---
+
+## 1. Rào Chắn An Toàn Dòng Lệnh (CLI Guardrails)
+- **Quyền sở hữu**: Chỉ tạo/sửa file trong `src/frontend/`.
+- **Lệnh được phép**:
+  - `npm --prefix src/frontend run typecheck`
+  - `npm --prefix src/frontend run lint`
+  - `npm --prefix src/frontend run build`
+- **Lệnh cấm**: Cấm chạy `npm install` trần trong sandbox; cấm sửa file ngoài `src/frontend/`.
+
+---
+
+## 2. Cấu Trúc Thư Mục Chuẩn (`src/frontend/`)
 
 ```text
 src/frontend/
@@ -15,82 +29,92 @@ src/frontend/
 │   ├── components/           # UI Components tái sử dụng & Feature Components
 │   ├── lib/
 │   │   └── api/              # Typed Fetch Client kết nối tới FastAPI Backend
+│   │       └── mocks/        # Mock fixtures phục vụ Wave 1
 │   ├── hooks/                # Custom React Hooks
 │   └── types/                # TypeScript Interfaces khớp 100% với Backend Schemas
 ├── package.json
 └── tsconfig.json
 ```
 
-## 2. Mẫu Typed API Client (`src/frontend/src/lib/api/client.ts`)
+---
 
-```typescript
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+## 3. Quy Chuẩn Đồng Bộ Hợp Đồng (Contract Synchronization)
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public detail: string,
-  ) {
-    super(detail);
-    this.name = "ApiError";
-  }
-}
+1. **Thống nhất Casing `snake_case`**:
+   - Khai báo interface properties trong `src/frontend/src/types/` theo đúng chuẩn `snake_case` của REST API JSON.
+   - Không tự ý đổi tên trường sang `camelCase` khi nhận từ API để tránh lỗi `undefined` tại runtime.
+2. **Strict TypeScript — Tuyệt đối không dùng `any`**:
+   ```typescript
+   export interface Item {
+     id: string; // RFC 4122 UUID
+     title: string;
+     description: string | null;
+     tags: string[];
+     created_at: string; // ISO 8601 UTC
+     updated_at: string;
+   }
+   ```
+3. **Mẫu Typed API Client Wrapper**:
+   ```typescript
+   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export async function apiRequest<T>(
-  endpoint: string,
-  options?: RequestInit,
-): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+   export class ApiError extends Error {
+     constructor(
+       public status: number,
+       public detail: string,
+     ) {
+       super(detail);
+       this.name = "ApiError";
+     }
+   }
 
-  if (!response.ok) {
-    let detail = `HTTP Error ${response.status}`;
-    try {
-      const errBody = (await response.json()) as { detail?: string };
-      if (typeof errBody.detail === "string") {
-        detail = errBody.detail;
-      }
-    } catch {
-      // Giữ thông báo mặc định nếu body không phải JSON
-    }
-    throw new ApiError(response.status, detail);
-  }
+   export async function apiRequest<T>(
+     endpoint: string,
+     options?: RequestInit,
+   ): Promise<T> {
+     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+       ...options,
+       headers: {
+         "Content-Type": "application/json",
+         ...options?.headers,
+       },
+     });
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
+     if (!response.ok) {
+       let detail = `HTTP Error ${response.status}`;
+       try {
+         const errBody = (await response.json()) as { detail?: string };
+         if (typeof errBody.detail === "string") {
+           detail = errBody.detail;
+         }
+       } catch {
+         // Giữ message mặc định nếu không phải JSON
+       }
+       throw new ApiError(response.status, detail);
+     }
 
-  return (await response.json()) as T;
-}
-```
+     if (response.status === 204) {
+       return undefined as T;
+     }
 
-## 3. Tiêu chuẩn Giao diện & Accessibility (A11y)
-- **Không dùng `any`**: Mọi props, state và API response đều phải có kiểu tường minh trong `src/types/`.
-- **Đầy đủ 4 Trạng thái UI**: `Loading` (skeleton/spinner), `Error` (alert + nút Retry), `Empty` (trạng thái trống + hướng dẫn), `Success` (dữ liệu chính).
-- **Accessibility**: Mọi `<input>` phải gắn với `<label htmlFor="...">`, nút icon phải có `aria-label`, trạng thái đang gửi form phải có `disabled={isSubmitting}` và `aria-busy={isSubmitting}`.
+     return (await response.json()) as T;
+   }
+   ```
 
-## 4. Chiến lược Mocking Dữ liệu Độc lập tại Wave 1 (Wave 1 Mocking Strategy)
+---
 
-Do `frontend-dev` được triển khai song song với `db-dev` tại **Wave 1** (khi `backend-dev` chưa dựng xong API thực tế), việc gọi API trực tiếp có thể gây lỗi mạng hoặc chặn quá trình phát triển UI:
-- **Biến môi trường kiểm soát Mocking**: Hỗ trợ flag `NEXT_PUBLIC_USE_MOCKS=true` (hoặc tự động fallback sang mock khi chạy dev/test độc lập).
-- **Mock Data Fixture (`src/frontend/src/lib/api/mocks/`)**: Tạo các file mock fixture bám sát 100% JSON mẫu trong `docs/specs/<feature-slug>/plan.md`.
-- **Mẫu Mock Client Wrapper**:
-  ```typescript
-  import { MOCK_ITEMS } from "./mocks/items";
+## 4. Wave 1 Mocking & 4 Trạng Thái Giao Diện
+- **Mocking Wave 1**: Tạo mock fixtures tại `src/frontend/src/lib/api/mocks/` bám sát `plan.md`. Hỗ trợ flag `NEXT_PUBLIC_USE_MOCKS=true` để dev và test giao diện độc lập.
+- **Bắt buộc 4 Trạng Thái UI**:
+  1. `Loading`: Skeleton loader layout tương ứng.
+  2. `Error`: Alert hiển thị thông báo lỗi + nút Retry.
+  3. `Empty`: Trạng thái rỗng + CTA button tạo mới.
+  4. `Success`: Render dữ liệu responsive kèm tiêu chuẩn A11y.
 
-  export async function fetchItems(): Promise<Item[]> {
-    if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
-      // Giả lập độ trễ mạng ngắn để kiểm chứng Loading State
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      return MOCK_ITEMS;
-    }
-    return apiRequest<Item[]>("/api/v1/items");
-  }
-  ```
-- **Lợi ích**: Đảm bảo `frontend-dev` có thể hoàn thiện và tự tin kiểm thử trực quan cả 4 trạng thái giao diện (`Loading`, `Error`, `Empty`, `Success`) ngay tại Wave 1 mà hoàn toàn không phụ thuộc vào tiến độ của backend.
+---
 
+## 5. Tham Gia Vòng Lặp Sửa Lỗi (Feedback Loop)
+Khi nhận tin nhắn `[SELF-HEALING ACTION REQUIRED]` từ QA hoặc `[REVIEW-FIX ACTION REQUIRED]` từ Reviewer:
+1. Xác định nguyên nhân (lỗi typecheck, thiếu trạng thái UI, lỗi mock data).
+2. Sửa lỗi trong `src/frontend/`, chạy `npm --prefix src/frontend run typecheck`.
+3. Phản hồi cho Tech Lead bằng thông điệp `[FIX-COMPLETED]`.

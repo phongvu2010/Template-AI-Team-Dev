@@ -1,9 +1,14 @@
 # AI Team Dev — Hệ thống Multi-Agent trên Antigravity 2.0
 
-Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-Agent** theo **Mô hình Ma trận (Matrix Architecture)**:
+Workspace này đã được cấu hình chuẩn **Native Antigravity 2.0 Multi-Agent** theo **Mô hình Ma trận (Matrix Architecture)** kết hợp quy trình **2-Wave Execution**, giải quyết triệt để 4 trụ cột kỹ thuật:
 
-> 🚀 **Cẩm Nang Sử Dụng**:
-> - Xem [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) để biết cách khởi tạo repo mới và cài đặt môi trường.
+1. 🔄 **Cơ Chế Phản Hồi Tự Động (Feedback Loop & Circuit Breaker)**: Vòng lặp sửa lỗi 2 chiều cho cả Testing và Code Review với giới hạn 3 lần lặp và cơ chế ngắt mạch an toàn.
+2. 📐 **Đồng Bộ Hợp Đồng Dữ Liệu & API (Data & API Contract Synchronization)**: Loại bỏ rủi ro lệch chuẩn qua Ma trận ánh xạ 3 tầng (Database $\leftrightarrow$ Backend $\leftrightarrow$ Frontend) và chuẩn hóa casing `snake_case`.
+3. 🛡️ **Rào Chắn An Toàn Dòng Lệnh (CLI Execution Guardrails)**: Phân quyền thực thi lệnh theo vai trò (Role-based Whitelist/Blacklist) và bảo vệ phân vùng file nghiêm ngặt.
+4. 📋 **Tiêu Chuẩn Hóa Hồ Sơ Bàn Giao (Artifact Handover Schema)**: Chuẩn hóa toàn diện định dạng Metadata Header và phiếu báo lỗi/thẩm định có cấu trúc tại `docs/specs/<feature-slug>/`.
+
+> 🚀 **Cẩm Nang Sử Dụng Chi Tiết**:
+> - Xem [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) để biết cách khởi tạo repo mới và cài đặt môi trường Day-0.
 > - Xem [WORKFLOW.md](WORKFLOW.md) để nắm toàn bộ Quy trình Vận hành Chuẩn (SOP) 7 giai đoạn từ ý tưởng đến bàn giao.
 
 ---
@@ -35,36 +40,45 @@ Template này được tối ưu hoá chuyên sâu cho các dự án **Full-Stac
 
 ---
 
+## 🏗️ Sơ Đồ Quy Trình Thực Thi 5 Pha (Multi-Agent Pipeline)
+
 ```text
                                   ┌────────────────────────┐
                                   │      1. PLANNER        │
                                   │ (docs/specs/<slug>/)   │
+                                  │  - Metadata Header     │
+                                  │  - Cross-Layer Matrix  │
+                                  │  - REST API Contract   │
                                   └───────────┬────────────┘
                                               │
                                               ▼
-               ┌─────────────────────────────────────────────────────────────┐
-               │              2. DEV SQUADS (2-Wave Execution)               │
-               │                                                             │
-               │  [Wave 1 - Song song]                                       │
-               │  ├── db-dev       ──► src/db/ (SQLAlchemy 2.0 Models)       │
-               │  └── frontend-dev ──► src/frontend/ (Next.js UI & Types)    │
-               │                                                             │
-               │  [Wave 2]                                                   │
-               │  └── backend-dev  ──► src/backend/ (FastAPI + Pydantic v2)  │
-               └──────────────────────────────┬──────────────────────────────┘
+                ┌─────────────────────────────────────────────────────────────┐
+                │              2. DEV SQUADS (2-Wave Execution)               │
+                │                                                             │
+                │  [Wave 1 - Song song]                                       │
+                │  ├── db-dev       ──► src/db/ (SQLAlchemy 2.0 Models)       │
+                │  └── frontend-dev ──► src/frontend/ (Next.js UI & Types)    │
+                │                                                             │
+                │  [Wave 2]                                                   │
+                │  └── backend-dev  ──► src/backend/ (FastAPI + Pydantic v2)  │
+                └──────────────────────────────┬──────────────────────────────┘
                                               │
                                               ▼
                                   ┌────────────────────────┐
                                   │      3. QA TESTER      │
                                   │  (pytest / vitest/tsc) │
+                                  │  - Test Metrics        │
+                                  │  - Structured Bug List │
                                   └───────────┬────────────┘
-                                              │
+                                              │ ◄── [Self-Healing Loop: Max 3x]
                                               ▼
                                   ┌────────────────────────┐
                                   │    4. CODE REVIEWER    │
                                   │ (Token-optimized diff) │
+                                  │  - Quality Scorecard   │
+                                  │  - Structured Findings │
                                   └───────────┬────────────┘
-                                              │
+                                              │ ◄── [Review-Fix Loop: Max 3x]
                                               ▼
                                   ┌────────────────────────┐
                                   │   5. COMMIT & HANDOFF  │
@@ -74,30 +88,33 @@ Template này được tối ưu hoá chuyên sâu cho các dự án **Full-Stac
 
 ---
 
-## 1. Kiến trúc & Danh sách 6 Subagents Chuyên biệt
+## 👥 Danh Sách 6 Subagents Chuyên Biệt & Rào Chắn Lệnh
 
-| Subagent ID | Vai trò (Role) | Phạm vi (Scope) | Công nghệ phụ trách |
-| :--- | :--- | :--- | :--- |
-| [`planner`](.agents/agents/planner.md) | System Architect & Planner | `docs/specs/<slug>/plan.md` | Thiết kế DB Schema, OpenAPI Contract, UI Tree & Test Cases |
-| [`db-dev`](.agents/agents/db-dev.md) | Database Specialist | `src/db/` | PostgreSQL, SQLAlchemy 2.0 (`AsyncSession`), Alembic |
-| [`frontend-dev`](.agents/agents/frontend-dev.md) | Frontend Specialist | `src/frontend/` | React 19, Next.js (App Router), TypeScript Strict, Tailwind CSS |
-| [`backend-dev`](.agents/agents/backend-dev.md) | Backend Specialist | `src/backend/` | Python 3.11+, FastAPI, Pydantic v2, Async Services |
-| [`qa-tester`](.agents/agents/qa-tester.md) | QA & Automated Tester | `docs/specs/<slug>/test-report.md` | Linter `ruff` (.venv/bin/ruff), `pytest` (`.venv/bin/pytest`), SQLite fallback, `npm run typecheck` |
-| [`code-reviewer`](.agents/agents/code-reviewer.md) | Principal Code Reviewer | `docs/specs/<slug>/review-report.md` | Audit `git diff`, Kiến trúc, Bảo mật (OWASP), N+1 & A11y |
+| Subagent ID | Vai trò (Role) | Thư mục quyền sở hữu | Lệnh được phép (Whitelist) | Nhiệm vụ chính |
+| :--- | :--- | :--- | :--- | :--- |
+| [`planner`](.agents/agents/planner.md) | System Architect & Planner | `docs/specs/<slug>/` | Chỉ đọc/ghi file (`view_file`, `write_to_file`) | Xuất bản `plan.md` (Cross-Layer Data Contract Matrix, REST API Spec, UI Spec, AC Matrix) |
+| [`db-dev`](.agents/agents/db-dev.md) | Database Specialist | `src/db/` | `.venv/bin/ruff check src/db/`, `python3 -m py_compile`, `alembic`, `runner.py` | Tạo SQLAlchemy 2.0 models, migrations, repositories async, seeds |
+| [`frontend-dev`](.agents/agents/frontend-dev.md) | Frontend Specialist | `src/frontend/` | `npm --prefix src/frontend run typecheck`, `run lint`, `run build` | Tạo Next.js pages/components, TypeScript interfaces (`snake_case`), mock fixtures, 4 UI states |
+| [`backend-dev`](.agents/agents/backend-dev.md) | Backend Specialist | `src/backend/` | `.venv/bin/ruff check src/backend/`, `python3 -m py_compile` | Tạo Pydantic v2 schemas (`snake_case`), async services, FastAPI endpoints kết nối `src/db/` |
+| [`qa-tester`](.agents/agents/qa-tester.md) | QA & Automated Tester | `docs/specs/<slug>/`, `tests/` | `.venv/bin/ruff check src/`, `PYTHONPATH=src .venv/bin/pytest`, `run typecheck` | Chạy linter, automated tests (SQLite fallback), xuất `test-report.md` kèm Structured Bug Tickets |
+| [`code-reviewer`](.agents/agents/code-reviewer.md) | Principal Code Reviewer | `docs/specs/<slug>/` | `git status --short`, `git diff --stat`, `git diff` | Audit `git diff`, kiểm tra N+1 query, bảo mật OWASP, xuất `review-report.md` |
 
 ---
 
-## 2. Cấu trúc Thư mục Workspace
+## 📁 Cấu Trúc Thư Mục Workspace
 
 ```text
 AI Team Dev/
 ├── AGENTS.md                                      # Quy tắc điều phối Tech Lead / Orchestrator toàn cục
+├── WORKFLOW.md                                    # Cẩm nang SOP 7 giai đoạn & bộ mẫu thông điệp Dispatch
+├── TEMPLATE_GUIDE.md                              # Hướng dẫn chi tiết sử dụng template cho dự án mới
+├── README.md                                      # Tổng quan dự án, kiến trúc & danh sách tác tử
 ├── pyproject.toml                                 # Khởi tạo dependencies & pytest pythonpath=["src"]
 ├── docker-compose.yml                             # Khởi chạy PostgreSQL 16 Alpine local
 ├── .env.example                                   # Biến môi trường mẫu cho DB, API, Frontend
 ├── .gitignore                                     # Bỏ qua bytecode, node_modules, cache
 ├── .agents/
-│   ├── agents/                                    # Định nghĩa 6 Subagents chuyên biệt
+│   ├── agents/                                    # Định nghĩa 6 Subagents chuyên biệt kèm Guardrails
 │   │   ├── planner.md
 │   │   ├── db-dev.md
 │   │   ├── backend-dev.md
@@ -107,39 +124,42 @@ AI Team Dev/
 │   └── skills/                                    # Bộ Skills & Runbooks tải theo ngữ cảnh
 │       ├── team-pipeline/
 │       │   ├── SKILL.md
-│       │   └── resources/
-│       │       ├── plan-template.md
-│       │       ├── test-report-template.md
-│       │       └── review-report-template.md
+│       │   └── resources/                         # Bộ mẫu hồ sơ bàn giao chuẩn hóa
+│       │       ├── plan-template.md               # Template kế hoạch & Data Contract Matrix
+│       │       ├── test-report-template.md        # Template báo cáo QA & Structured Bug Tickets
+│       │       └── review-report-template.md      # Template thẩm định & Quality Scorecard
 │       ├── db-sqlalchemy-alembic/SKILL.md
 │       ├── backend-fastapi/SKILL.md
 │       └── frontend-nextjs/SKILL.md
 ├── src/                                           # Thư mục mã nguồn thực thi tập trung
 │   ├── db/                                        # Models, session, repositories, migrations, seeds
+│   │   └── AGENTS.md                              # Luật cục bộ tầng Database
 │   ├── backend/                                   # FastAPI app, schemas, services, api routers, tests
+│   │   └── AGENTS.md                              # Luật cục bộ tầng Backend
 │   └── frontend/                                  # Next.js app router, components, lib api, types
+│       └── AGENTS.md                              # Luật cục bộ tầng Frontend
 └── docs/
-    └── specs/                                     # Hồ sơ bàn giao tính năng (plan, test, review)
+    └── specs/                                     # Hồ sơ bàn giao tính năng chuẩn hóa
         └── README.md
 ```
 
 ---
 
-## 3. Cách Sử dụng trên Giao diện Antigravity 2.0
+## 🚀 Cách Sử Dụng Trên Giao Diện Antigravity 2.0
 
-### Cách 1: Chạy Toàn bộ Quy trình (`Planner -> Dev (2-Wave) -> Testing -> Review`)
+### Cách 1: Chạy Toàn Bộ Quy Trình Tự Động (Full-Flow)
 Người dùng chỉ cần nhập yêu cầu tính năng vào chat Antigravity, ví dụ:
 > *"Hãy triển khai tính năng Quản lý Danh mục (Category Management) gồm bảng categories (id, name, slug, description), CRUD API trên FastAPI và trang giao diện trên Next.js theo quy trình Multi-Agent."*
 
-Agent chính (**Tech Lead**) sẽ tự động:
-1. Gọi `planner` lập bản thiết kế tại `docs/specs/category-management/plan.md`.
+Agent chính (**Tech Lead Orchestrator**) sẽ tự động:
+1. Gọi `planner` lập bản thiết kế tại `docs/specs/category-management/plan.md` (kèm Cross-Layer Data Contract Matrix).
 2. **Wave 1**: Gọi song song `db-dev` (viết model trong `src/db/`) và `frontend-dev` (dựng UI/Types trong `src/frontend/`).
 3. **Wave 2**: Gọi `backend-dev` viết router & service trong `src/backend/` kết nối trực tiếp `src/db/`.
-4. Gọi `qa-tester` chạy kiểm tra `ruff` linter và bộ kiểm thử tự động với `PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` và xuất `test-report.md`.
-5. Gọi `code-reviewer` audit qua `git diff` và xuất `review-report.md` (`APPROVED`).
+4. Gọi `qa-tester` chạy kiểm tra `ruff` linter và bộ kiểm thử tự động với `PYTHONPATH=src .venv/bin/pytest src/backend/tests -v` và xuất `test-report.md`. (Nếu lỗi, tự kích hoạt vòng lặp Self-Healing).
+5. Gọi `code-reviewer` audit qua `git diff` và xuất `review-report.md` (`APPROVED`). (Nếu lỗi, tự kích hoạt vòng lặp Review-Fix).
 6. **Đóng gói & Commit**: Tự động rà soát `git status` và tạo commit chuẩn Conventional Commits `feat(<slug>): ...` ghi nhận mốc hoàn thành.
 
-### Cách 2: Gọi Trực tiếp Từng Squad hoặc Giai đoạn
+### Cách 2: Gọi Trực Tiếp Từng Squad Hoặc Giai Đoạn (Direct Squad Invocation)
 - *"Nhờ `planner` thiết kế kiến trúc phân hệ Sản phẩm."*
 - *"Nhờ `db-dev` thêm trường `thumbnail_url` vào bảng `categories` tại `src/db/`."*
 - *"Nhờ `backend-dev` viết thêm endpoint lọc danh mục tại `src/backend/`."*
